@@ -1,0 +1,132 @@
+<!doctype html>
+<!-- @dsCard group="UI Kit — Eligibility Auth Web" name="Prototype" subtitle="Clickable: Home → top nav swaps screens → row → fullscreen Patient Auth Summary" viewport="1920x1080" -->
+<html>
+<head>
+<meta charset="utf-8" />
+<title>WellSky — Eligibility &amp; Auth Prototype</title>
+<meta name="ext-resource-dependency" content="../../assets/neos-logo.png" data-resource-id="neosLogo" />
+<meta name="ext-resource-dependency" content="icons/attachment-type.svg" data-resource-id="attachmentType" />
+<meta name="ext-resource-dependency" content="icons/at-completed.png" data-resource-id="atCompleted" />
+<meta name="ext-resource-dependency" content="icons/at-needs-attention.png" data-resource-id="atNeedsAttention" />
+<meta name="ext-resource-dependency" content="icons/at-in-progress.png" data-resource-id="atInProgress" />
+<meta name="ext-resource-dependency" content="icons/search.svg" data-resource-id="searchIcon" />
+<meta name="ext-resource-dependency" content="icons/mdi-user.png" data-resource-id="mdiUser" />
+<meta name="ext-resource-dependency" content="icons/filter.svg" data-resource-id="filterIcon" />
+<meta name="ext-resource-dependency" content="icons/automated.png" data-resource-id="automated" />
+<meta name="ext-resource-dependency" content="icons/payor-eligibility-response.png" data-resource-id="payorEligibilityResponse" />
+<meta name="ext-resource-dependency" content="icons/member-id-card.png" data-resource-id="memberIdCard" />
+<meta name="ext-resource-dependency" content="icons/pb-met-ai.svg" data-resource-id="pbMetAi" />
+<meta name="ext-resource-dependency" content="icons/pb-met-user.svg" data-resource-id="pbMetUser" />
+<meta name="ext-resource-dependency" content="icons/pb-unmet-ai.svg" data-resource-id="pbUnmetAi" />
+<meta name="ext-resource-dependency" content="icons/pb-edit.svg" data-resource-id="pbEdit" />
+<meta name="ext-resource-dependency" content="icons/pb-tag-met.svg" data-resource-id="pbTagMet" />
+<meta name="ext-resource-dependency" content="icons/pb-tag-not-met.svg" data-resource-id="pbTagNotMet" />
+<meta name="ext-resource-dependency" content="icons/pb-tag-met-override.svg" data-resource-id="pbTagMetOverride" />
+<template id="__bundler_thumbnail" data-bg-color="#1c2d42">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="80" fill="#1c2d42"/>
+    <rect x="8" y="8" width="104" height="12" rx="2" fill="#2563eb" opacity=".9"/>
+    <rect x="8" y="26" width="50" height="46" rx="2" fill="#fff" opacity=".08"/>
+    <rect x="64" y="26" width="48" height="46" rx="2" fill="#fff" opacity=".08"/>
+    <rect x="12" y="30" width="30" height="3" rx="1" fill="#60a5fa"/>
+    <rect x="12" y="36" width="42" height="2" rx="1" fill="#fff" opacity=".3"/>
+    <rect x="12" y="41" width="38" height="2" rx="1" fill="#fff" opacity=".2"/>
+    <rect x="12" y="46" width="40" height="2" rx="1" fill="#fff" opacity=".2"/>
+    <rect x="68" y="30" width="36" height="3" rx="1" fill="#34d399"/>
+    <rect x="68" y="37" width="40" height="2" rx="1" fill="#fff" opacity=".3"/>
+    <rect x="68" y="43" width="35" height="2" rx="1" fill="#fff" opacity=".2"/>
+  </svg>
+</template>
+<link rel="stylesheet" href="../../colors_and_type.css" />
+<style>
+html,body{margin:0;padding:0;background:#fff;font-family:"Roboto",system-ui,sans-serif;overflow:hidden}
+*{box-sizing:border-box}
+button{font-family:inherit}
+.chip-scroll{scrollbar-width:none;-ms-overflow-style:none;cursor:grab;}
+.chip-scroll::-webkit-scrollbar{display:none;width:0;height:0;}
+.chip-scroll.dragging{cursor:grabbing;user-select:none;}
+.ws-scrollbody{scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;}
+.ws-scrollbody::-webkit-scrollbar{width:4px;height:4px;background:transparent;}
+.ws-scrollbody::-webkit-scrollbar-track{background:transparent;}
+.ws-scrollbody::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+.ws-scrollbody::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
+.ws-hscroll{scrollbar-width:auto;scrollbar-color:#94a3b8 #eef2f7;}
+.ws-hscroll::-webkit-scrollbar{height:12px;background:#eef2f7;}
+.ws-hscroll::-webkit-scrollbar-track{background:#eef2f7;border-radius:6px;}
+.ws-hscroll::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:6px;border:2px solid #eef2f7;}
+.ws-hscroll::-webkit-scrollbar-thumb:hover{background:#64748b;}
+.hide-sb{scrollbar-width:none;-ms-overflow-style:none;}
+.hide-sb::-webkit-scrollbar{display:none;width:0;height:0;}
+.ma-date::-webkit-calendar-picker-indicator{opacity:0;cursor:pointer;}
+.ma-date::-webkit-inner-spin-button,.ma-date::-webkit-clear-button{display:none;}
+.ma-date::placeholder{color:#a9b2bd;}
+</style>
+</head>
+<body>
+<div id="root"><div style="position:fixed;inset:0;background:linear-gradient(to right,rgb(56,71,90) 0%,rgb(28,45,66) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:Roboto,system-ui,sans-serif"><div style="width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:omSpin .9s linear infinite"></div><div style="color:rgba(255,255,255,.9);font:400 14px/20px Roboto,sans-serif">Loading NEOS…</div><div style="color:rgba(255,255,255,.5);font:400 12px/18px Roboto,sans-serif">Preparing screens on first load</div></div></div>
+<style>@keyframes omSpin{to{transform:rotate(360deg)}}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="eligibility-request-view.jsx"></script>
+<script type="text/babel" src="dashboard-view.jsx"></script>
+<script type="text/babel" src="prototype.jsx"></script>
+<script type="text/babel">
+window.__omRoot = ReactDOM.createRoot(document.getElementById("root"));
+window.__renderApp = () => window.__omRoot.render(<Prototype />);
+window.__renderApp();
+</script>
+<script type="text/babel" src="rcd-request-view.jsx"></script>
+<script type="text/babel" src="rcd-automation-log.jsx"></script>
+<script type="text/babel" src="claim-status-view.jsx"></script>
+<script type="text/babel" src="claim-batch-view.jsx"></script>
+<script type="text/babel" src="notifications-request-view.jsx"></script>
+<script type="text/babel" src="notifications-automation-log.jsx"></script>
+<script type="text/babel" src="cdm-request-view.jsx"></script>
+<script type="text/babel" src="assessment-request-view.jsx"></script>
+<script type="text/babel" src="assessment-drawer.jsx"></script>
+<script type="text/babel" src="asv-automation-log.jsx"></script>
+<script type="text/babel" src="erv-automation-log.jsx"></script>
+<script type="text/babel" src="arv-automation-log.jsx"></script>
+<script type="text/babel" src="eligibility-detail.jsx"></script>
+<script type="text/babel" src="screen-builder-drawer.jsx"></script>
+<script type="text/babel" src="intake-ereferral-view.jsx"></script>
+<script type="text/babel" src="intake-preeligibility-view.jsx"></script>
+<script type="text/babel" src="intake-patient-view.jsx"></script>
+<script type="text/babel" src="intake-automation-log.jsx"></script>
+<script type="text/babel" src="eligibility-batch-view.jsx"></script>
+<script type="text/babel" src="audit-views.jsx"></script>
+<script type="text/babel">if (window.__renderApp) window.__renderApp();</script>
+<script>
+// Drag-to-scroll for filter-chip rows (.chip-scroll). No visible scrollbar.
+(function(){
+  var active=null,startX=0,startLeft=0,moved=false;
+  document.addEventListener("pointerdown",function(e){
+    var el=e.target.closest && e.target.closest(".chip-scroll");
+    if(!el || el.scrollWidth<=el.clientWidth) return;
+    active=el; startX=e.clientX; startLeft=el.scrollLeft; moved=false;
+    el.classList.add("dragging");
+  });
+  document.addEventListener("pointermove",function(e){
+    if(!active) return;
+    var dx=e.clientX-startX;
+    if(Math.abs(dx)>3) moved=true;
+    if(moved){ active.scrollLeft=startLeft-dx; e.preventDefault(); }
+  });
+  document.addEventListener("pointerup",function(){
+    if(!active) return;
+    var el=active; active=null; el.classList.remove("dragging");
+    if(moved){
+      // Swallow the click that follows a real drag (so chip × isn't triggered).
+      var cancel=function(ev){ ev.stopPropagation(); ev.preventDefault(); };
+      document.addEventListener("click",cancel,true);
+      setTimeout(function(){ document.removeEventListener("click",cancel,true); },0);
+    }
+  });
+})();
+</script>
+</body>
+</html>

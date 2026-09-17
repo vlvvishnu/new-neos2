@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API Schema — ELIGIBILITY_RESPONSE_RECEIVED</title>
+<link rel="stylesheet" href="./styles.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: rgb(245,246,248); }
+  a { color: rgb(22,119,255); }
+  a:hover { text-decoration: underline; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+// @dsIgnore — runtime Babel JSX bundle, not a design-system component
+(function () {
+  const { useState, useRef, useEffect } = React;
+
+  // ── GitHub Gist sync (token-free read, modal-gated write) ───
+  const GIST_ID   = '95bcf2d74787429258cc580fc39810b2';
+  const GIST_FILE = 'api-schema-data.json';
+  const DATA_VERSION = 'v6';
+  var __gistRevision = null; // updated_at from last load/save, used for conflict detection
+
+  async function gistLoad() {
+    try {
+      const r = await fetch('https://api.github.com/gists/' + GIST_ID);
+      if (!r.ok) return null;
+      const g = await r.json();
+      __gistRevision = g.updated_at;
+      const f = g.files && g.files[GIST_FILE];
+      if (!f) return null;
+      let content = f.content;
+      if (f.truncated && f.raw_url) content = await (await fetch(f.raw_url)).text();
+      const parsed = JSON.parse(content);
+      if (parsed && parsed.__v2) return parsed;
+      if (parsed && parsed.__bundle) return { __bundle:true, __v2:true, schemas:[{ id:'s1', name:(parsed.data&&parsed.data.type)||'Schema 1', data:parsed.data, descriptions:parsed.descriptions }] };
+      return { __bundle:true, __v2:true, schemas:[{ id:'s1', name:parsed.type||'Schema 1', data:parsed, descriptions:null }] };
+    } catch(e) { return null; }
+  }
+
+  async function gistCheckRevision(token) {
+    try {
+      const headers = token ? { Authorization: 'token ' + token } : {};
+      const r = await fetch('https://api.github.com/gists/' + GIST_ID, { headers });
+      if (!r.ok) return { changed: false };
+      const g = await r.json();
+      return { changed: !!(__gistRevision && g.updated_at !== __gistRevision), updatedAt: g.updated_at };
+    } catch(e) { return { changed: false }; }
+  }
+
+  async function gistSaveWithToken(schemas, token, version) {
+    const bundle = { __bundle:true, __v2:true, __dataVersion: version||DATA_VERSION, schemas };
+    const body = { description:'WellSky Eligibility API Schema', public:false, files:{ [GIST_FILE]:{ content:JSON.stringify(bundle,null,2) } } };
+    const r = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method:'PATCH',
+      headers:{ Authorization:'token '+token, 'Content-Type':'application/json' },
+      body:JSON.stringify(body)
+    });
+    if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.message||'HTTP '+r.status); }
+    const g = await r.json();
+    __gistRevision = g.updated_at;
+    return g;
+  }
+  // Legacy alias for compatibility — routes through modal, never hardcodes token
+  function gistSave() { /* no-op: use triggerGistSave in component */ return Promise.resolve(null); }
+
+  const T = {
+    headerGrad: 'linear-gradient(rgb(56,71,90) 0%, rgb(44,60,80) 42%, rgb(28,45,66) 100%)',
+    textPrimary: 'rgb(58,66,74)', textBody: 'rgb(96,93,93)', textMuted: 'rgb(106,113,125)',
+    border1: 'rgb(232,233,234)', border2: 'rgb(238,240,243)',
+    surface: '#fff', surfaceAlt: 'rgb(250,250,252)', blue: 'rgb(22,119,255)',
+    blue25: 'rgb(240,245,255)', danger: 'rgb(207,19,34)', dangerBg: 'rgb(255,244,244)',
+    font: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+    mono: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+  };
+
+  const TYPE_COLORS = {
+    object:  { fg: 'rgb(102,96,166)',  bg: 'rgba(102,96,166,0.10)' },
+    array:   { fg: 'rgb(22,119,255)',  bg: 'rgb(240,245,255)' },
+    string:  { fg: 'rgb(39,105,102)',  bg: 'rgba(39,105,102,0.10)' },
+    number:  { fg: 'rgb(133,79,11)',   bg: 'rgb(250,238,218)' },
+    boolean: { fg: 'rgb(207,19,34)',   bg: 'rgb(255,244,244)' },
+    null:    { fg: 'rgb(106,113,125)', bg: 'rgb(241,239,235)' },
+  };
+
+  const DEPTH_BG = ['#fff', 'rgb(240,245,255)', 'rgb(232,241,252)', 'rgb(225,237,250)'];
+  function depthBg(d) { return DEPTH_BG[Math.min(d, 3)]; }
+  function arrayItemLabel(parentKey, idx) {
+    if (!parentKey) return '['+idx+']';
+    const words = parentKey.replace(/([A-Z])/g,' $1').trim();
+    const label = words.charAt(0).toUpperCase()+words.slice(1);
+    const singular = label.replace(/ies$/,'y').replace(/([^s])s$/,'$1').replace(/Detailss$/,'Details');
+    return singular+' '+(idx+1);
+  }
+  const COLOR_FAMILIES = [
+    {text:'rgb(22,100,220)',textChild:'rgb(30,80,160)',bg:['rgb(214,229,252)','rgb(230,240,255)','rgb(238,246,255)','rgb(244,250,255)','rgb(248,252,255)','rgb(252,254,255)']}, // blue
+    {text:'rgb(160,100,0)',textChild:'rgb(130,80,0)',bg:['rgb(255,235,180)','rgb(255,244,210)','rgb(255,249,225)','rgb(255,252,235)','rgb(255,253,243)','rgb(255,254,248)']},   // mustard
+    {text:'rgb(18,135,88)',textChild:'rgb(22,100,72)',bg:['rgb(210,243,228)','rgb(225,248,238)','rgb(234,251,243)','rgb(241,253,247)','rgb(246,254,250)','rgb(250,255,253)']}, // green
+    {text:'rgb(110,50,190)',textChild:'rgb(85,40,150)',bg:['rgb(232,218,255)','rgb(241,231,255)','rgb(245,238,255)','rgb(249,243,255)','rgb(251,247,255)','rgb(254,251,255)']},// purple
+    {text:'rgb(15,130,165)',textChild:'rgb(12,100,130)',bg:['rgb(205,240,252)','rgb(220,246,255)','rgb(230,250,255)','rgb(238,252,255)','rgb(244,254,255)','rgb(249,255,255)']},// teal
+    {text:'rgb(170,30,70)',textChild:'rgb(130,20,55)',bg:['rgb(255,210,225)','rgb(255,226,236)','rgb(255,235,242)','rgb(255,242,247)','rgb(255,247,251)','rgb(255,251,253)']}, // rose
+  ];
+
+  const BASE_DESCRIPTIONS = {
+    id: "Unique identifier for this event", time: "Timestamp when the event was emitted",
+    type: "Event type name", source: "Event source path, includes the entity ID",
+    specversion: "CloudEvents spec version", datacontenttype: "MIME type of the data payload",
+    data: "Event payload", entityId: "Unique ID of the eligibility request entity",
+    entityStatus: "Processing status of the entity",
+    eligibilityRequest: "Original eligibility inquiry that was submitted",
+    senderDetails: "Party that submitted the request", partnerName: "Partner entity name",
+    organizationName: "Full legal name of the organization", agencyName: "Home health agency name",
+    branchName: "Agency branch or location name", patientDetails: "Patient demographic information",
+    subscriberDetails: "Insurance subscriber information",
+    firstName: "First name", middleName: "Middle name or initial", lastName: "Last name",
+    patientId: "Agency-assigned patient identifier", dateOfBirth: "Date of birth",
+    gender: "Gender on file", startOfCareDate: "Date home health care began",
+    patientAddress: "Patient mailing address", subscriberAddress: "Subscriber mailing address",
+    addressLine1: "Street address line 1", addressLine2: "Street address line 2",
+    city: "City", state: "State abbreviation", zip: "ZIP or postal code",
+    relationshipToSubscriber: "Patient's relationship to the insurance subscriber",
+    payerDetails: "Insurance payer information", payerName: "Name of the payer",
+    planName: "Name of the insurance plan",
+    payerType: "Category of payer, for example Medicare or commercial",
+    payerId: "Payer identifier used in the transaction",
+    payerHierarchy: "Order in which this payer applies, primary or secondary",
+    memberId: "Subscriber or member ID with the payer", MBI: "Medicare Beneficiary Identifier",
+    eligibilitySource: "System or gateway that returned the eligibility data",
+    gateway: "Clearinghouse or gateway used for the inquiry",
+    serviceTypesRequested: "Service types included in the eligibility inquiry",
+    serviceTypeCode: "X12 service type code",
+    serviceTypeDescription: "Plain-language description of the service type",
+    eligibilityResponse: "Eligibility verification result returned by the payer",
+    planDetails: "Plan-level configuration", planSponsor: "Organization sponsoring the plan",
+    planType: "Type of plan, for example Medicare Traditional",
+    planCoverage: "Overall coverage status for the plan",
+    eligibilityCheckDate: "Date the eligibility check was performed",
+    eligibilityInquiryId: "ID of the underlying eligibility inquiry",
+    coverageStatus: "Whether coverage is active",
+    coverageDescription: "Reason or basis for the coverage status",
+    policyStartDate: "Date the policy became effective", policyEndDate: "Date the policy ends, if applicable",
+    serviceCareProviderNetworkStatus: "Network status for the servicing provider",
+    planBenefits: "Benefit periods and cost-sharing amounts for the plan",
+    network: "Network tier this benefit applies to",
+    coverageLevel: "Coverage level, for example individual or family",
+    benefitStartDate: "Start date of this benefit period", benefitEndDate: "End date of this benefit period",
+    deductible: "Deductible amounts for this benefit period",
+    value: "Deductible dollar amount",
+    deductibleType: "Deductible classification: Episode (Part A, per benefit period) or CalendarYear (Part B, annual)",
+    timePeriod: "X12 271 time period qualifier: Episode (EB07=30, per benefit period) or CalendarYear (EB07=23, annual)",
+    copay: "Copay amounts for this benefit period",
+    copayType: "Copay type: Episode (per spell of illness) or Day (per day of service)",
+    amount: "Copay dollar amount",
+    insurancePart: "Medicare part this applies to (Part A or Part B)",
+    episodeCount: "Number of episodes or spells of illness",
+    quantityRemaining: "Remaining days in this benefit period",
+    quantityExceeded: "Days exceeded in this benefit period",
+    quantityNotExceeded: "Days not yet exceeded in this benefit period",
+    serviceLevelDetails: "Coverage detail broken out by requested service type",
+    serviceLevelBenefits: "Benefit amounts specific to this service type",
+    additionalCoverageDetails: "Other coverage identified for this patient",
+    coverageStartDate: "Start date of this additional coverage",
+    coverageEndDate: "End date of this additional coverage",
+    insuranceType: "NEW — Insurance type classification (e.g. Medicare Part A, Medicare Part B, commercial, Medicaid)",
+    serviceTypeCodes: "NEW — Array of service type codes associated with this coverage",
+    coverageDetails: "NEW — Additional coverage detail items for this plan",
+    payerNotes: "NEW — Free-text notes from the payer regarding this coverage",
+    timePeriod: "NEW — Time period qualifier for this coverage detail",
+    coverageDates: "NEW — Start and end dates for this coverage detail",
+    individualOrOrganizationDetails: "NEW — Individual or organization name related to this coverage detail",
+    healthCareServiceDelivery: "NEW — Health care service delivery details (quantity, time period, units)",
+    payerName: "NEW — Name of the payer for this additional coverage",
+    phoneNumber: "NEW — Contact phone number for the payer",
+    coverageType: "NEW — Type of coverage (e.g. primary, secondary, supplemental)",
+    policyNumber: "NEW — Policy or group number for this coverage",
+    description: "NEW — Human-readable description of this additional coverage",
+    nonCoveredPeriods: "NEW from real sample · [Medicare only] — EB*D segments: periods where Part A benefits are exhausted or service is non-covered (e.g. prior hospitalization). Null for Commercial/MA.",
+    billingOptionCode: "NEW from real sample · [Medicare only] — MSG segment billing option code for MSP/MCO scenarios (e.g. 'C' = MA Bill Option Code). Null for Commercial/MA.",
+    qmbPlanName: "NEW from real sample · [Medicare only] — EB*R***QM: Qualified Medicare Beneficiary plan name when QMB coverage is active. Null for Commercial/MA.",
+    coInsurance: "NEW from real sample · [Medicare & Commercial/MA] — EB*A co-insurance entries. Medicare Part B = 20%; Commercial/MA = plan-defined coInsurancepercent per service/network tier.",
+    coInsurancePercent: "NEW from real sample · [Medicare only] — EB07=27 percentage (e.g. '20' = 20% of approved amount). Commercial/MA uses coInsurancepercent inside serviceLevelBenefits.",
+    dayRangeStart: "NEW from real sample · [Medicare only] — HSD qualifier 30: start day of cost-tier range (e.g. '1' for days 1–60 at $0/day). Not applicable for Commercial/MA.",
+    dayRangeEnd: "NEW from real sample · [Medicare only] — HSD qualifier 31: end day of cost-tier range (e.g. '60', '90'). Not applicable for Commercial/MA.",
+    benefitLimit: "NEW from real sample · [Medicare only] — EB*K rows: minimum days, maximum days, and total dollar cap per benefit period. Null for Commercial/MA.",
+    limitType: "NEW from real sample · [Medicare only] — Benefit limit classification: Minimum (EB07=32), Maximum (EB07=33), or Total (EB07=7).",
+    unit: "NEW from real sample · [Medicare only] — Unit of measure for the limit quantity (e.g. 'Days' from HSD unit qualifier DA).",
+    homeHealthEpisodes: "NEW from real sample · [Medicare only] — EB*X segments from the MAC: active and historical home health episodes with NOA dates, episode status, contractor, and facility NPI. Always null for Commercial/MA payers.",
+    episodePeriodStart: "NEW from real sample · [Medicare only] — DTP*472 range start: episode certification period start date.",
+    episodePeriodEnd: "NEW from real sample · [Medicare only] — DTP*472 range end: episode certification period end date.",
+    endOfCareDate: "NEW from real sample · [Medicare only] — DTP*194: discharge or end-of-care date for this episode.",
+    episodeStatus: "NEW from real sample · [Medicare only] — MSG status code (e.g. '30-Still patient', '01-Discharged to home or self care').",
+    noaType: "NEW from real sample · [Medicare only] — MSG NOA type code (e.g. 'NOA-2' = amended Notice of Admission filed with MAC).",
+    macContractorName: "NEW from real sample · [Medicare only] — NM1*PR: Medicare Administrative Contractor name (e.g. 'Cahaba GBA', 'Palmetto GBA').",
+    macContractorNPI: "NEW from real sample · [Medicare only] — NM1*PR PI: MAC contractor payer identifier (e.g. '15004' for Cahaba GBA).",
+    facilityNPI: "NEW from real sample · [Medicare only] — NM1*FA XX: facility NPI when a specific facility is associated with the episode.",
+    revocationCode: "NEW from real sample · [Medicare only] — MSG Revocation Code for hospice elections (0 = active, 1 = revoked by beneficiary).",
+    planWebsite: "NEW from real sample · [Commercial/MA] — PER*IC UR element: payer or plan website URL. Rarely present in Medicare Traditional 271 responses.",
+    dateOfLoss: "NEW from real sample · [Medicare MSP only] — DTP*636: date of injury/accident for Non-Group Health Plan MSP coverage. Null for Commercial/MA.",
+    ormIndicator: "NEW from real sample · [Medicare MSP only] — MSG ORM indicator: 'Y' = Ongoing Responsibility for Medicals. Null for Commercial/MA.",
+    injuryCodes: "NEW from real sample · [Medicare MSP only] — ICD-10-CM diagnosis codes for the injury underlying MSP/ORM coverage. Null for Commercial/MA.",
+    mspSourceCode: "NEW from real sample · [Medicare MSP only] — MSG Source Code: MSP type and reference number (e.g. '22-11122-MIR Non-Group Health Plan'). Null for Commercial/MA.",
+    primaryPayerReference: "NEW from real sample · [Medicare MSP only] — NM1*PRP block: primary responsible payer name and mailing address. Null for Commercial/MA.",
+    contractedServiceProviderNPI: "NEW from real sample · [Medicare only] — NM1*1P XX: NPI of the contracted service provider agency.",
+    planAuthorizationRequired: "[Commercial/MA only] — Whether prior authorization is required for services. Not present in Medicare Traditional responses.",
+    utilizationManagementOrganization: "[Commercial/MA only] — UM organization responsible for authorization decisions. Not present in Medicare Traditional responses.",
+    CMSContractNumber: "[Commercial/MA only] — CMS contract number for Medicare Advantage plans (e.g. H5521). Not present in Medicare Traditional responses.",
+    planNumber: "[Commercial/MA only] — Plan number (e.g. H5521-034 for Medicare Advantage). Not present in Medicare Traditional responses.",
+    groupName: "[Commercial/MA only] — Group name associated with the plan. Not present in Medicare Traditional responses.",
+    groupNumber: "[Commercial/MA only] — Group number associated with the plan. Not present in Medicare Traditional responses.",
+    outOfPocket: "[Commercial/MA only] — Out-of-pocket maximum amounts. Not present in Medicare Traditional responses.",
+    outOfPocketMaximum: "[Commercial/MA only] — Maximum out-of-pocket amount for the benefit period.",
+    outOfPocketUsed: "[Commercial/MA only] — Out-of-pocket amount used to date.",
+    outOfPocketRemaining: "[Commercial/MA only] — Out-of-pocket amount remaining.",
+    coPayment: "[Commercial/MA only] — Copayment amounts per visit or service. Medicare Traditional uses copay[] instead.",
+    coPayAmount: "[Commercial/MA only] — Dollar amount of the copayment.",
+    visitLimitsAndDisciplineExclusionsDetails: "[Commercial/MA only] — Visit limits and discipline exclusion rules. Not present in Medicare Traditional responses.",
+    primaryCareProviderDetails: "[Commercial/MA only] — PCP assignment and contact details. Not present in Medicare Traditional responses.",
+    memberIdCard: "[Commercial/MA only] — Member ID card details including provider phone and network status. Not present in Medicare Traditional responses.",
+    referralStatus: "[Commercial/MA only] — Whether referrals are required. Not present in Medicare Traditional responses.",
+    contractedServiceProvider: "Provider contracted to deliver the service",
+    contractedServiceProviderName: "Name of the contracted service provider",
+    eligibilityAlert: "Alerts flagged during eligibility verification",
+    eligibilityAlertType: "Category of alert", alertDescription: "Details of the alert",
+    eligibilityResponseDocs: "Documents attached to the eligibility response",
+    failureReason: "Reason the request failed, if applicable",
+    meta: "Metadata about how the event was processed",
+    userType: "Type of actor that triggered the event", user: "Actor that triggered the event"
+  };
+
+  const COMMERCIAL_MEDICARE_DATA = {
+    id: "55dfe5e9-725a-4ce0-ba41-925e588623c2",
+    time: "2017-07-21T17:32:28Z",
+    type: "e5.entity.eligibility-request.ELIGIBILITY_RESPONSE_RECEIVED",
+    source: "es/eligibility-request/204817",
+    specversion: "1.0",
+    datacontenttype: "application/json",
+    data: {
+      entityId: "156e622c-6cdf-4c27-9bc9-2f2db69919f5",
+      entityStatus: "COMPLETED",
+      eligibilityRequest: {
+        senderDetails: {
+          partnerName: "Wellsky",
+          organizationName: "11111-Affinity",
+          agencyName: "Polk",
+          branchName: "Branch1"
+        },
+        patientDetails: {
+          firstName: "MARGARET",
+          lastName: "THORNTON",
+          middleName: "A",
+          patientId: "204817",
+          dateOfBirth: "1945-01-15",
+          gender: "F",
+          startOfCareDate: "2024-06-15",
+          patientAddress: {
+            addressLine1: "742 Evergreen Terrace",
+            addressLine2: null,
+            city: "Springfield",
+            state: "IL",
+            zip: "62701"
+          }
+        },
+        payerDetails: {
+          payerName: "Aetna Medicare Advantage",
+          payerId: "60054",
+          payerHierarchy: "P",
+          memberId: "W194827301"
+        },
+        serviceTypesRequested: [
+          { serviceTypeCode: "30", serviceTypeDescription: "Health Benefit Plan Coverage" },
+          { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care" }
+        ]
+      },
+      eligibilityResponse: {
+        patientDetails: {
+          patientId: "204817",
+          firstName: "MARGARET",
+          lastName: "THORNTON",
+          middleName: "A",
+          dateOfBirth: "1945-01-15",
+          gender: "F",
+          patientAddress: {
+            addressLine1: "742 Evergreen Terrace",
+            addressLine2: null,
+            city: "Springfield",
+            state: "IL",
+            zip: "62701"
+          },
+          relationshipToSubscriber: "Subscriber"
+        },
+        subscriberDetails: {
+          firstName: "MARGARET",
+          lastName: "THORNTON",
+          middleName: "A",
+          dateOfBirth: "1945-01-15",
+          gender: "F",
+          subscriberAddress: {
+            addressLine1: "742 Evergreen Terrace",
+            addressLine2: null,
+            city: "Springfield",
+            state: "IL",
+            zip: "62701"
+          }
+        },
+        payerDetails: {
+          payerName: "Aetna Medicare Advantage",
+          planName: "Aetna Medicare Eagle PPO",
+          payerType: "Medicare Advantage",
+          payerId: "60054",
+          memberId: "W194827301",
+          MBI: "4HT2-MP3-AA37",
+          medicaidID: null,
+          eligibilitySource: "REALTIME",
+          gateway: "Availity"
+        },
+        planDetails: {
+          planNumber: "H5521-034",
+          planSponsor: "Aetna Life Insurance Company",
+          groupName: "Aetna Medicare Eagle PPO",
+          groupNumber: "H5521",
+          planType: "HMO",
+          planAuthorizationRequired: "Y",
+          utilizationManagementOrganization: "Aetna UM",
+          CMSContractNumber: "H5521"
+        },
+        planCoverage: {
+          eligibilityCheckDate: "2024-06-15",
+          eligibilityInquiryId: "204816",
+          coverageStatus: "Active",
+          coverageDescription: "Medicare Advantage enrollment verified",
+          policyStartDate: "2024-01-01",
+          policyEndDate: "2024-12-31",
+          referralStatus: "Not Required",
+          serviceCareProviderNetworkStatus: ["In-Network", "Out-of-Network"],
+          serviceTypeCodes: ["30","42"],
+          insuranceType: "Medicare Advantage",
+          coverageDetails: [{ payerNotes: "Aetna Medicare Eagle PPO in-network benefits", timePeriod: "CalendarYear", coverageDates: { start: "2024-01-01", end: "2024-12-31" }, individualOrOrganizationDetails: "Aetna Life Insurance Company" }]
+        },
+        planBenefits: [
+          {
+            network: "In-Network",
+            coverageLevel: ["Individual"],
+            benefitStartDate: "2024-01-01",
+            benefitEndDate: "2024-12-31",
+            deductible: [
+              {
+                deductibleAmount: "0.00",
+                deductibleUsed: "0.00",
+                deductibleRemaining: "0.00",
+                deductiblePayerNotes: "No deductible applies for in-network home health services",
+                insuranceType: "Medicare Advantage (In-Network)"
+              }
+            ],
+            outOfPocket: [
+              {
+                outOfPocketMaximum: "3400.00",
+                outOfPocketUsed: "820.50",
+                outOfPocketRemaining: "2579.50",
+                outOfPocketPayerNotes: "Calendar year out-of-pocket maximum"
+              }
+            ]
+          },
+          {
+            network: "Out-of-Network",
+            coverageLevel: ["Individual"],
+            benefitStartDate: "2024-01-01",
+            benefitEndDate: "2024-12-31",
+            deductible: [
+              {
+                deductibleAmount: "250.00",
+                deductibleUsed: "0.00",
+                deductibleRemaining: "250.00",
+                deductiblePayerNotes: "Out-of-network deductible applies per calendar year",
+                insuranceType: "Medicare Advantage (Out-of-Network)"
+              }
+            ],
+            outOfPocket: [
+              {
+                outOfPocketMaximum: "6700.00",
+                outOfPocketUsed: "820.50",
+                outOfPocketRemaining: "5879.50",
+                outOfPocketPayerNotes: "Combined in- and out-of-network out-of-pocket maximum"
+              }
+            ]
+          }
+        ],
+        serviceLevelDetails: [
+          {
+            serviceTypeCode: "42",
+            serviceTypeDescription: "Home Health Care",
+            coverageStatus: "Active",
+            coverageDescription: "Home health covered as Medicare Advantage benefit",
+            benefitStartDate: "2024-01-01",
+            benefitEndDate: "2024-12-31",
+            healthCareServiceDelivery: { quantity: "60", timePeriodQualifier: "CalendarYear", units: "Visits" },
+            insuranceType: "Medicare Advantage",
+            serviceLevelBenefits: [
+              {
+                network: "In-Network",
+                coverageLevel: ["Individual"],
+                coPayment: [
+                  {
+                    coPayAmount: "0.00",
+                    coPayPayerNotes: "No copay for in-network home health visits",
+                    authRequired: "Y"
+                  }
+                ],
+                coInsurance: [
+                  {
+                    coInsurancepercent: "0",
+                    coInsurancePayerNotes: "Plan covers 100% in-network after authorization",
+                    authRequired: "Y"
+                  }
+                ],
+                deductible: [
+                  {
+                    deductibleAmount: "0.00",
+                    deductibleUsed: "0.00",
+                    deductibleRemaining: "0.00",
+                    deductiblePayerNotes: "No deductible for home health"
+                  }
+                ],
+                visitLimitsAndDisciplineExclusionsDetails: [
+                  {
+                    visitLimitsAndDisciplineExclusions: "60 visits per calendar year; skilled nursing, PT, OT, SLP included",
+                    visitLimitsAndExclusionsPayerNotes: "Additional visits may be authorized with medical necessity documentation",
+                    authRequired: "Y"
+                  }
+                ]
+              },
+              {
+                network: "Out-of-Network",
+                coverageLevel: ["Individual"],
+                coPayment: [
+                  {
+                    coPayAmount: "45.00",
+                    coPayPayerNotes: "Copay per visit for out-of-network home health",
+                    authRequired: "Y"
+                  }
+                ],
+                coInsurance: [
+                  {
+                    coInsurancepercent: "20",
+                    coInsurancePayerNotes: "20% coinsurance after out-of-network deductible",
+                    authRequired: "Y"
+                  }
+                ],
+                deductible: [
+                  {
+                    deductibleAmount: "250.00",
+                    deductibleUsed: "0.00",
+                    deductibleRemaining: "250.00",
+                    deductiblePayerNotes: "Out-of-network deductible applies"
+                  }
+                ],
+                visitLimitsAndDisciplineExclusionsDetails: [
+                  {
+                    visitLimitsAndDisciplineExclusions: "30 visits per calendar year out-of-network",
+                    visitLimitsAndExclusionsPayerNotes: "Prior authorization required for all out-of-network home health",
+                    authRequired: "Y"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        memberIdCard: {
+          payerId: "60054",
+          providerPhoneNumber: "1-800-624-0756",
+          medicareNationalNetworkStatus: "Medicare Advantage",
+          levelFundedPlan: false
+        },
+        additionalCoverageDetails: [
+          {
+            planName: "Illinois Medicaid — Medicare Savings Program",
+            payerId: "77013",
+            coverageStartDate: "2022-03-01",
+            coverageEndDate: "2024-12-31",
+            memberId: "IL8839201X",
+            payerName: "Illinois Department of Healthcare and Family Services",
+            phoneNumber: "1-800-226-0768",
+            coverageType: "Medicare Savings Program (QMB)",
+            policyNumber: "IL8839201X",
+            description: "Qualified Medicare Beneficiary — covers Medicare premiums, deductibles, and coinsurance"
+          }
+        ],
+        primaryCareProviderDetails: [
+          {
+            pcpFirstName: "JAMES",
+            pcpLastName: "OKAFOR",
+            pcpContactNumber: "2175554892",
+            pcpAddress: {
+              addressLine1: "890 Lincoln Ave, Suite 200",
+              addressLine2: null,
+              city: "Springfield",
+              state: "IL",
+              zip: "62702"
+            },
+            pcpType: "Internal Medicine",
+            pcpNPI: "1477843920",
+            pcpGroupNumber: "GRP-84210"
+          }
+        ],
+        contractedServiceProvider: {
+          contractedServiceProviderName: "POLK HOME HEALTH SERVICES, LLC",
+          contractedServiceProviderAddress: {
+            addressLine1: "1001 Commerce Drive",
+            addressLine2: null,
+            city: "Des Moines",
+            state: "IA",
+            zip: "50309"
+          }
+        },
+        eligibilityAlert: [
+          {
+            eligibilityAlertType: "Authorization Required Alert",
+            alertDescription: "Prior authorization is required for all home health services under plan H5521-034. Submit via Availity portal with physician order and plan of care."
+          },
+          {
+            eligibilityAlertType: "Coordination of Benefits (COB) Alert",
+            alertDescription: "Illinois Medicaid Medicare Savings Program (IL8839201X) identified as secondary coverage. Medicaid may cover Medicare cost-sharing amounts."
+          }
+        ]
+      },
+      eligibilityResponseDocs: [
+        {
+          url: "http://example.com",
+          documentType: "Eligibility PDF"
+        }
+      ],
+      failureReason: null,
+      meta: {
+        userType: "automated",
+        user: "system"
+      }
+    }
+  };
+
+  const UNIFIED_DATA = {
+    id: "unified-271-001",
+    time: "2026-06-26T04:39:04Z",
+    type: "e5.entity.eligibility-request.ELIGIBILITY_RESPONSE_RECEIVED",
+    source: "es/eligibility-request/113313",
+    specversion: "1.0",
+    datacontenttype: "application/json",
+    data: {
+      entityId: "unified-entity-001",
+      entityStatus: "COMPLETED",
+      eligibilityRequest: {
+        senderDetails: { partnerName: "Wellsky", organizationName: "JAMES RIVER HOME HEALTH, LLC", agencyName: "JAMES RIVER HOME HEALTH, LLC", branchName: "Main Branch" },
+        patientDetails: { firstName: "NORA", middleName: "L", lastName: "BROWN", patientId: "113313", dateOfBirth: "1951-03-15", gender: "F", startOfCareDate: "2025-12-26", patientAddress: { addressLine1: "5824 SPINNAKER COVE RD", addressLine2: null, city: "MIDLOTHIAN", state: "VA", zip: "231122127" } },
+        payerDetails: { payerName: "Medicare - All states", payerId: "10000", payerHierarchy: "P", memberId: "5A21HR0KW80" },
+        serviceTypesRequested: [{ serviceTypeCode: "30", serviceTypeDescription: "Health Benefit Plan Coverage" }, { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care" }]
+      },
+      eligibilityResponse: {
+        patientDetails: { patientId: "113313", firstName: "NORA", lastName: "BROWN", middleName: "L", dateOfBirth: "1951-03-15", gender: "F", patientAddress: { addressLine1: "5824 SPINNAKER COVE RD", addressLine2: null, city: "MIDLOTHIAN", state: "VA", zip: "231122127" }, relationshipToSubscriber: "Subscriber" },
+        subscriberDetails: { firstName: "NORA", lastName: "BROWN", middleName: "L", dateOfBirth: "1951-03-15", gender: "F", subscriberAddress: { addressLine1: "5824 SPINNAKER COVE RD", addressLine2: null, city: "MIDLOTHIAN", state: "VA", zip: "231122127" } },
+        payerDetails: { payerName: "Medicare - All states", planName: "Medicare", payerType: "Medicare", payerId: "10000", memberId: "5A21HR0KW80", MBI: "5A21HR0KW80", eligibilitySource: "IVANS-CMS-RT", gateway: "IVANS" },
+        planDetails: { planSponsor: "CMS", planType: "Medicare Traditional" },
+        planCoverage: {
+          eligibilityCheckDate: "2026-06-26",
+          eligibilityInquiryId: "231345336",
+          coverageStatus: "Active",
+          coverageDescription: "Beneficiary insured due to age OASI",
+          policyStartDate: "2016-03-01",
+          policyEndDate: "9999-12-31",
+          serviceCareProviderNetworkStatus: "General",
+          serviceTypeCodes: ["30","42"],
+          insuranceType: "Medicare",
+          coverageDetails: [{ payerNotes: "Original Medicare fee-for-service", timePeriod: "CalendarYear", coverageDates: { start: "2026-01-01", end: "2026-12-31" }, individualOrOrganizationDetails: "CMS Medicare" }],
+          nonCoveredPeriods: [
+            { serviceTypeCode: "30", insurancePart: "Medicare Part A", startDate: "2026-10-05", endDate: "2026-10-07", notes: "Prior hospitalization — benefit exhaustion period" },
+            { serviceTypeCode: "30", insurancePart: "Medicare Part A", startDate: "2026-05-09", endDate: "2026-06-29", notes: "Prior hospitalization — benefit exhaustion period" }
+          ],
+          billingOptionCode: null,
+          qmbPlanName: null
+        },
+        planBenefits: [
+          {
+            network: "General", coverageLevel: "Individual", benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31",
+            deductible: [{ value: "1736.00", deductibleType: "Episode", timePeriod: "Episode", insuranceType: "Medicare Part A" }],
+            copay: [
+              { copayType: "Episode", amount: "0.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: 1, dayRangeStart: "1", dayRangeEnd: "60" },
+              { copayType: "Day", amount: "434.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: null, dayRangeStart: "61", dayRangeEnd: "90" }
+            ],
+            coInsurance: null,
+            benefitLimit: [
+              { limitType: "Minimum", quantity: "60", unit: "Days", timePeriod: "Episode" },
+              { limitType: "Maximum", quantity: "60", unit: "Days", timePeriod: "Episode" },
+              { limitType: "Total", amount: "868.00", timePeriod: "CalendarYear" }
+            ]
+          },
+          {
+            network: "General", coverageLevel: "Individual", benefitStartDate: "2025-01-01", benefitEndDate: "2025-12-31",
+            deductible: [{ value: "1676.00", deductibleType: "Episode", timePeriod: "Episode", insuranceType: "Medicare Part A" }],
+            copay: [
+              { copayType: "Episode", amount: "0.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: 1, dayRangeStart: "1", dayRangeEnd: "60" },
+              { copayType: "Day", amount: "419.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: null, dayRangeStart: "61", dayRangeEnd: "90" }
+            ],
+            coInsurance: null,
+            benefitLimit: [
+              { limitType: "Minimum", quantity: "60", unit: "Days", timePeriod: "Episode" },
+              { limitType: "Maximum", quantity: "60", unit: "Days", timePeriod: "Episode" },
+              { limitType: "Total", amount: "838.00", timePeriod: "CalendarYear" }
+            ]
+          },
+          {
+            network: "General", coverageLevel: "Individual", benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31",
+            deductible: [{ value: "283.00", deductibleType: "CalendarYear", timePeriod: "CalendarYear", insuranceType: "Medicare Part B" }],
+            copay: [{ copayType: "Day", amount: "0.00", timePeriod: "CalendarYear", insurancePart: "Medicare Part B", episodeCount: null }],
+            coInsurance: [{ coInsurancePercent: "20", timePeriod: "CalendarYear", insurancePart: "Medicare Part B", notes: "Patient responsible for 20% of approved amount after deductible" }],
+            benefitLimit: null
+          },
+          {
+            network: "General", coverageLevel: "Individual", benefitStartDate: "2025-01-01", benefitEndDate: "2025-12-31",
+            deductible: [{ value: "257.00", deductibleType: "CalendarYear", timePeriod: "CalendarYear", insuranceType: "Medicare Part B" }],
+            copay: null,
+            coInsurance: [{ coInsurancePercent: "20", timePeriod: "CalendarYear", insurancePart: "Medicare Part B", notes: "Patient responsible for 20% of approved amount after deductible" }],
+            benefitLimit: null
+          }
+        ],
+        serviceLevelDetails: [{
+          serviceTypeCode: "42", serviceTypeDescription: "Home Health Care",
+          coverageStatus: "Active Policy", coverageDescription: "Active Part A/B Home Health Benefit",
+          benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31",
+          healthCareServiceDelivery: { quantity: "60", timePeriodQualifier: "CalendarYear", units: "Visits" },
+          insuranceType: "Medicare",
+          serviceLevelBenefits: [{
+            network: "General", coverageLevel: "Individual", benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31",
+            deductible: [{ value: "0.00", deductibleType: "Episode", timePeriod: "Episode", insurancePart: "Medicare Part A" }],
+            copay: [{ copayType: "Episode", amount: "0.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: 1 }],
+            coInsurance: [{ coInsurancePercent: "0", timePeriod: "CalendarYear", insurancePart: "Medicare Part B", notes: "Home health covered 100% under Part B when homebound criteria met" }]
+          }]
+        }],
+        homeHealthEpisodes: [
+          { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care", episodePeriodStart: "2026-05-07", episodePeriodEnd: "2026-06-05", startOfCareDate: "2026-05-11", endOfCareDate: "2026-06-05", episodeStatus: "30-Still patient", noaType: null, macContractorName: "Cahaba GBA", macContractorNPI: "15004", facilityNPI: null, revocationCode: null, notes: null },
+          { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care", episodePeriodStart: "2026-04-07", episodePeriodEnd: "2026-05-06", startOfCareDate: "2026-04-13", endOfCareDate: "2026-05-06", episodeStatus: "30-Still patient", noaType: "NOA-2", macContractorName: "Cahaba GBA", macContractorNPI: "15004", facilityNPI: null, revocationCode: null, notes: null },
+          { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care", episodePeriodStart: "2026-03-08", episodePeriodEnd: "2026-04-06", startOfCareDate: "2026-03-09", endOfCareDate: "2026-04-06", episodeStatus: "30-Still patient", noaType: null, macContractorName: "Cahaba GBA", macContractorNPI: "15004", facilityNPI: null, revocationCode: null, notes: null },
+          { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care", episodePeriodStart: "2026-02-06", episodePeriodEnd: "2026-03-07", startOfCareDate: "2026-02-09", endOfCareDate: "2026-03-07", episodeStatus: "30-Still patient", noaType: null, macContractorName: "Cahaba GBA", macContractorNPI: "15004", facilityNPI: null, revocationCode: null, notes: null },
+          { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care", episodePeriodStart: "2026-01-07", episodePeriodEnd: "2026-02-05", startOfCareDate: "2026-01-07", endOfCareDate: "2026-02-05", episodeStatus: "30-Still patient", noaType: "NOA-2", macContractorName: "Cahaba GBA", macContractorNPI: "15004", facilityNPI: null, revocationCode: null, notes: "G0180 physician certification — last certified 2025-03-01" }
+        ],
+        additionalCoverageDetails: [
+          { planName: "SilverScript Choice", payerId: "11004", coverageStartDate: "2015-01-01", coverageEndDate: "9999-12-31", memberId: "S5601", payerName: "SilverScript Choice (CVS/Caremark)", phoneNumber: "1-800-318-2596", planWebsite: "www.aetnamedicare.com", coverageType: "Part D Prescription Drug", policyNumber: "S5601-034", description: "Medicare Part D prescription drug coverage", dateOfLoss: null, ormIndicator: null, injuryCodes: null, mspSourceCode: null, billingOptionCode: null, primaryPayerReference: null },
+          { planName: "Non-Group Health Plan — Motor Vehicle", payerId: "N/A", coverageStartDate: "2025-01-07", coverageEndDate: "2025-07-11", memberId: "000001406114", payerName: "ALLSTATE INSURANCE COMPANY", phoneNumber: null, planWebsite: null, coverageType: "Non-Group Health Plan (MSP)", policyNumber: "000001406114", description: "Motor vehicle accident liability — Non-Group Health Plan MSP", dateOfLoss: "2025-07-11", ormIndicator: "Y", injuryCodes: ["S0010XA","S1080XA","S5012XA","S80919A"], mspSourceCode: "22-11122-MIR Non-Group Health Plan", billingOptionCode: null, primaryPayerReference: { payerName: "ALLSTATE INSURANCE COMPANY", addressLine1: "PO BOX 660636", addressLine2: null, city: "DALLAS", state: "TX", zip: "752660636" } }
+        ],
+        contractedServiceProvider: { contractedServiceProviderName: "JAMES RIVER HOME HEALTH, LLC", contractedServiceProviderNPI: "1790125987" },
+        eligibilityAlert: [
+          { eligibilityAlertType: "Overlapping Care Alert", alertDescription: "5 active/recent Home Health Episodes identified with Cahaba GBA (PI:15004). See homeHealthEpisodes for full episode detail." },
+          { eligibilityAlertType: "Coordination of Benefits (COB) Alert", alertDescription: "Non-Group Health Plan Primary MSP found: ALLSTATE INSURANCE COMPANY (Effective 2025-01-07, ref 000001406114). ORM=Y. ICD codes: S0010XA, S1080XA, S5012XA, S80919A." }
+        ],
+        eligibilityResponseDocs: [],
+        failureReason: null,
+        meta: { userType: "automated", user: "system" }
+      }
+    }
+  };
+
+  const INITIAL_DATA = {
+    id: "872172138", time: "2026-02-27T12:56:36Z",
+    type: "es.entity.eligibility-request.ELIGIBILITY_RESPONSE_RECEIVED",
+    source: "es/eligibility-request/106305", specversion: "1.0",
+    datacontenttype: "application/json",
+    data: {
+      entityId: "01891ad6-7b3c-7e4a-8f12-9d4e6c8a2b35", entityStatus: "COMPLETED",
+      eligibilityRequest: {
+        senderDetails: { partnerName: "Element5", organizationName: "Element5 Health, Inc.", agencyName: "MID DELTA HOME HEALTH, INC", branchName: "Branch 004 — Boston Metro" },
+        patientDetails: { firstName: "LESLIE", middleName: "W", lastName: "ALEXANDER", patientId: "106305", dateOfBirth: "1959-03-10", gender: "M", startOfCareDate: "2025-09-06", patientAddress: { addressLine1: "P O BX 1000", addressLine2: null, city: "CITY", state: "MS", zip: "391541090" } },
+        payerDetails: { payerName: "Medicare - All states", payerId: "10000", payerHierarchy: "P", memberId: "7K43W1TEST" },
+        serviceTypesRequested: [{ serviceTypeCode: "30", serviceTypeDescription: "Health Benefit Plan Coverage" }, { serviceTypeCode: "42", serviceTypeDescription: "Home Health Care" }]
+      },
+      eligibilityResponse: {
+        patientDetails: { patientId: "106305", firstName: "LESLIE", lastName: "ALEXANDER", middleName: "W", dateOfBirth: "1959-03-10", gender: "M", patientAddress: { addressLine1: "P O BX 1000", addressLine2: null, city: "CITY", state: "MS", zip: "391541090" }, relationshipToSubscriber: "Subscriber" },
+        subscriberDetails: { firstName: "LESLIE", lastName: "ALEXANDER", middleName: "W", dateOfBirth: "1959-03-10", gender: "M", subscriberAddress: { addressLine1: "P O BX 1000", addressLine2: null, city: "CITY", state: "MS", zip: "391541090" } },
+        payerDetails: { payerName: "Medicare - All states", planName: "Medicare", payerType: "Medicare", payerId: "10000", memberId: "7K43W1TEST", MBI: "7K43W1TEST", eligibilitySource: "IVANS-CMS-RT", gateway: "IVANS" },
+        planDetails: { planSponsor: "CMS", planType: "Medicare Traditional" },
+        planCoverage: { eligibilityCheckDate: "2026-02-27", eligibilityInquiryId: "872172137", coverageStatus: "Active", coverageDescription: "Beneficiary insured due to age OASI", policyStartDate: "2004-03-01", policyEndDate: "9999-12-31", serviceCareProviderNetworkStatus: "General", serviceTypeCodes: ["30","42"], insuranceType: "Medicare", coverageDetails: [{ payerNotes: "Original Medicare fee-for-service", timePeriod: "CalendarYear", coverageDates: { start: "2026-01-01", end: "2026-12-31" }, individualOrOrganizationDetails: "CMS Medicare" }] },
+        planBenefits: [
+          { network: "General", coverageLevel: "Individual", benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31", deductible: [{ value: "1736.00", deductibleType: "Episode", timePeriod: "Episode", insuranceType: "Medicare Part A" }], copay: [{ copayType: "Episode", amount: "0.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: 1 }] },
+          { network: "General", coverageLevel: "Individual", benefitStartDate: "2025-01-01", benefitEndDate: "2025-12-31", deductible: [{ value: "1676.00", deductibleType: "Episode", timePeriod: "Episode", insuranceType: "Medicare Part A" }], copay: [{ copayType: "Episode", amount: "0.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: 1 }] },
+          { network: "General", coverageLevel: "Individual", benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31", deductible: [{ value: "283.00", deductibleType: "CalendarYear", timePeriod: "CalendarYear", insuranceType: "Medicare Part B" }], copay: [{ copayType: "Day", amount: "0.00", timePeriod: "CalendarYear", insurancePart: "Medicare Part B", episodeCount: null }] },
+          { network: "General", coverageLevel: "Individual", benefitStartDate: "2025-01-01", benefitEndDate: "2025-12-31", deductible: [{ value: "257.00", deductibleType: "CalendarYear", timePeriod: "CalendarYear", insuranceType: "Medicare Part B" }], copay: [{ copayType: "Day", amount: "0.00", timePeriod: "CalendarYear", insurancePart: "Medicare Part B", episodeCount: null }] }
+        ],
+        serviceLevelDetails: [{ serviceTypeCode: "42", serviceTypeDescription: "Home Health Care", coverageStatus: "Active Policy", coverageDescription: "Active Part A/B Home Health Benefit", benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31", healthCareServiceDelivery: { quantity: "60", timePeriodQualifier: "CalendarYear", units: "Visits" }, insuranceType: "Medicare", serviceLevelBenefits: [{ network: "General", coverageLevel: "Individual", benefitStartDate: "2026-01-01", benefitEndDate: "2026-12-31", deductible: [{ value: "0.00", deductibleType: "Episode", timePeriod: "Episode", insurancePart: "Medicare Part A" }], copay: [{ copayType: "Episode", amount: "0.00", timePeriod: "Episode", insurancePart: "Medicare Part A", episodeCount: 1, quantityRemaining: null, quantityExceeded: null, quantityNotExceeded: null }] }] }],
+        additionalCoverageDetails: [
+          { planName: "SilverScript Choice", payerId: "11004", coverageStartDate: "2015-01-01", coverageEndDate: "9999-12-31", memberId: "S5601", payerName: "SilverScript Choice (CVS/Caremark)", phoneNumber: "1-800-318-2596", coverageType: "Part D Prescription Drug", policyNumber: "S5601-034", description: "Medicare Part D prescription drug coverage" },
+          { planName: "STATE FARM INSURANCE CO.", payerId: "N/A", coverageStartDate: "2023-08-17", coverageEndDate: "9999-12-31", memberId: "055814224F", payerName: "State Farm Insurance Company", phoneNumber: "1-800-732-5246", coverageType: "Non-Group Health Plan (MSP)", policyNumber: "055814224F", description: "Motor vehicle accident liability — Non-Group Health Plan MSP" }
+        ],
+        contractedServiceProvider: { contractedServiceProviderName: "MID DELTA HOME HEALTH, INC" },
+        eligibilityAlert: [
+          { eligibilityAlertType: "Overlapping Care Alert", alertDescription: "Overlapping Home Health Episode identified with Palmetto GBA (NPI: 1649295684) for period 2026-01-05 to 2026-02-03. Status: Still Patient." },
+          { eligibilityAlertType: "Historical Care Alert", alertDescription: "Prior Home Health Episodes identified with Palmetto GBA covering periods 2025-08-11 to 2026-01-04." },
+          { eligibilityAlertType: "Coordination of Benefits (COB) Alert", alertDescription: "Non-Group Health Plan Primary MSP found: STATE FARM INSURANCE CO. (Effective 2023-08-17) under reference 055814224F." }
+        ]
+      },
+      eligibilityResponseDocs: [], failureReason: null,
+      meta: { userType: "automated", user: "system" }
+    }
+  };
+
+  // ── Helpers ──────────────────────────────────────────────────
+  function getType(v) { if (v===null||v===undefined) return 'null'; if (Array.isArray(v)) return 'array'; return typeof v; }
+
+  function deleteNested(obj, path) {
+    const [h,...rest]=path;
+    if (rest.length===0) { if (Array.isArray(obj)) return obj.filter((_,i)=>i!==h); const c=Object.assign({},obj); delete c[h]; return c; }
+    if (Array.isArray(obj)) { const a=obj.slice(); a[h]=deleteNested(a[h],rest); return a; }
+    return Object.assign({},obj,{[h]:deleteNested(obj[h],rest)});
+  }
+  function addNested(obj, path, key, value) {
+    if (path.length===0) { if (Array.isArray(obj)) return obj.concat([value]); return Object.assign({},obj,{[key]:value}); }
+    const [h,...rest]=path;
+    if (Array.isArray(obj)) { const a=obj.slice(); a[h]=addNested(a[h],rest,key,value); return a; }
+    return Object.assign({},obj,{[h]:addNested(obj[h],rest,key,value)});
+  }
+  function setNested(obj, path, value) {
+    if (path.length===0) return value;
+    const [h,...rest]=path;
+    if (Array.isArray(obj)) { const a=obj.slice(); a[h]=setNested(a[h],rest,value); return a; }
+    return Object.assign({},obj,{[h]:setNested(obj[h],rest,value)});
+  }
+  function renameNested(obj, path, newKey) {
+    function go(node, rem) {
+      if (rem.length===1) {
+        const old=rem[0]; if (Array.isArray(node)) return node;
+        const entries=Object.entries(node); const idx=entries.findIndex(([k])=>k===old);
+        if (idx===-1) return node; entries[idx]=[newKey,entries[idx][1]]; return Object.fromEntries(entries);
+      }
+      const [h,...rest]=rem;
+      if (Array.isArray(node)) { const a=node.slice(); a[h]=go(a[h],rest); return a; }
+      return Object.assign({},node,{[h]:go(node[h],rest)});
+    }
+    return go(obj, path);
+  }
+  function reorderSiblings(obj, path, fromIdx, toIdx) {
+    if (fromIdx===toIdx) return obj;
+    function go(node, rem) {
+      if (rem.length===0) {
+        if (Array.isArray(node)) { const a=node.slice(); const [it]=a.splice(fromIdx,1); a.splice(toIdx,0,it); return a; }
+        const e=Object.entries(node); const [it]=e.splice(fromIdx,1); e.splice(toIdx,0,it); return Object.fromEntries(e);
+      }
+      const [h,...rest]=rem;
+      if (Array.isArray(node)) { const a=node.slice(); a[h]=go(a[h],rest); return a; }
+      return Object.assign({},node,{[h]:go(node[h],rest)});
+    }
+    return go(obj, path);
+  }
+
+  // ── Downloads ────────────────────────────────────────────────
+  function downloadJSON(data, name) {
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const fname=(name||'eligibility-schema').replace(/[^a-z0-9_-]/gi,'_');
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=fname+'.json'; a.click(); URL.revokeObjectURL(url);
+  }
+  function flattenCSV(obj, descs, path) {
+    const rows=[]; const entries=Array.isArray(obj)?obj.map((v,i)=>['['+i+']',v]):Object.entries(obj);
+    entries.forEach(function(pair) {
+      const k=pair[0]; const v=pair[1]; const fp=path?path+'.'+k:k; const type=getType(v); const desc=descs[k]||'';
+      if (type==='object') { rows.push([fp,'object',desc,'']); flattenCSV(v,descs,fp).forEach(function(r){rows.push(r);}); }
+      else if (type==='array') { rows.push([fp,'array['+v.length+']',desc,'']); if(v.length>0) flattenCSV(v,descs,fp).forEach(function(r){rows.push(r);}); }
+      else { rows.push([fp,type,desc,v===null?'null':String(v)]); }
+    });
+    return rows;
+  }
+  function downloadCSV(data, descs, name) {
+    const rows=[['Field Path','Type','Description','Value']].concat(flattenCSV(data,descs,''));
+    const csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+    const fname=(name||'eligibility-schema').replace(/[^a-z0-9_-]/gi,'_');
+    const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=fname+'.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  // ── TypeBadge ────────────────────────────────────────────────
+  function TypeBadge({ type, count }) {
+    const c=TYPE_COLORS[type]||TYPE_COLORS.null;
+    return <span style={{fontFamily:T.mono,fontSize:11,fontWeight:500,padding:'2px 7px',borderRadius:3,color:c.fg,background:c.bg,whiteSpace:'nowrap'}}>{type}</span>;
+  }
+
+  // ── RowEditForm — full row edit panel ────────────────────────
+  function RowEditForm({ fieldKey, value, desc, isArrayIndex, onSave, onCancel }) {
+    const origType = getType(value);
+    const [newKey, setNewKey] = useState(fieldKey);
+    const [newDesc, setNewDesc] = useState(desc || '');
+    const [newType, setNewType] = useState(origType);
+    const [newVal, setNewVal] = useState(
+      origType === 'null' ? 'null' :
+      origType === 'object' || origType === 'array' ? '' :
+      typeof value === 'string' ? value : JSON.stringify(value)
+    );
+
+    const isPrimitive = !['object','array'].includes(newType);
+    const inp = { fontFamily: T.mono, fontSize: 13, padding: '6px 10px', border: '1px solid rgb(210,214,220)', borderRadius: 4, outline: 'none', color: T.textPrimary, background: T.surface };
+
+    function parseVal(s, t) {
+      if (t==='null') return null; if (t==='boolean') return s==='true';
+      if (t==='number') return parseFloat(s)||0; if (t==='object') return {}; if (t==='array') return [];
+      return s;
+    }
+    function doSave() {
+      const v = isPrimitive ? parseVal(newVal, newType) : value;
+      onSave({ key: (!isArrayIndex && newKey.trim()) ? newKey.trim() : fieldKey, value: v, desc: newDesc.trim(), type: newType });
+    }
+
+    return (
+      <div style={{ background: 'rgb(243,246,252)', border: '1px solid rgb(210,220,240)', borderRadius: 6, padding: '14px 16px', margin: '4px 0 6px' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: T.blue, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Edit field</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          {/* Key */}
+          <div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4, fontWeight: 500 }}>Field name</div>
+            <input value={newKey} onChange={e => setNewKey(e.target.value)} disabled={isArrayIndex}
+              style={Object.assign({}, inp, { width: '100%', opacity: isArrayIndex ? 0.5 : 1 })} />
+          </div>
+          {/* Type */}
+          <div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4, fontWeight: 500 }}>Type</div>
+            <select value={newType} onChange={e => setNewType(e.target.value)}
+              style={Object.assign({}, inp, { width: '100%', fontFamily: T.font, cursor: 'pointer' })}>
+              {['string','number','boolean','null','object','array'].map(t => React.createElement('option',{key:t,value:t},t))}
+            </select>
+          </div>
+        </div>
+        {/* Value */}
+        {isPrimitive && newType !== 'null' && (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4, fontWeight: 500 }}>Value</div>
+            <input value={newVal} onChange={e => setNewVal(e.target.value)}
+              style={Object.assign({}, inp, { width: '100%' })} />
+          </div>
+        )}
+        {/* Description */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4, fontWeight: 500 }}>Description</div>
+          <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
+            style={Object.assign({}, inp, { width: '100%', fontFamily: T.font, resize: 'vertical' })} />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={doSave} style={{ fontFamily: T.font, fontSize: 13, fontWeight: 600, padding: '6px 18px', background: T.blue, color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save row</button>
+          <button onClick={onCancel} style={{ fontFamily: T.font, fontSize: 13, padding: '6px 12px', background: 'transparent', color: T.textMuted, border: '1px solid rgb(210,214,220)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── AddFieldForm ─────────────────────────────────────────────
+  function AddFieldForm({ isArray, onAdd, onCancel }) {
+    const [key,setKey]=useState(''); const [valStr,setValStr]=useState(''); const [type,setType]=useState('string'); const [desc,setDesc]=useState('');
+    const inp={fontFamily:T.mono,fontSize:12,padding:'5px 8px',border:'1px solid rgb(210,214,220)',borderRadius:4,outline:'none',color:T.textPrimary,background:T.surface};
+    const needsValue=!['null','object','array'].includes(type);
+    function parseValue(s,t){if(t==='null')return null;if(t==='boolean')return s==='true';if(t==='number')return parseFloat(s)||0;if(t==='object')return{};if(t==='array')return[];return s;}
+    return (
+      <div style={{background:T.blue25,border:'1px dashed '+T.blue,borderRadius:6,padding:'12px 14px',marginTop:6}}>
+        <div style={{fontSize:11,fontWeight:600,color:T.blue,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:10}}>Add {isArray?'item':'field'}</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:8,alignItems:'center'}}>
+          {!isArray&&<input placeholder="key name" value={key} onChange={e=>setKey(e.target.value)} style={Object.assign({},inp,{width:140})}/>}
+          <select value={type} onChange={e=>setType(e.target.value)} style={Object.assign({},inp,{fontFamily:T.font,cursor:'pointer'})}>
+            {['string','number','boolean','null','object','array'].map(t=>React.createElement('option',{key:t,value:t},t))}
+          </select>
+          {needsValue&&<input placeholder="value" value={valStr} onChange={e=>setValStr(e.target.value)} style={Object.assign({},inp,{width:200})}/>}
+        </div>
+        <textarea placeholder="Description (optional)" value={desc} onChange={e=>setDesc(e.target.value)} rows={2}
+          style={Object.assign({},inp,{width:'100%',fontFamily:T.font,fontSize:12,resize:'vertical',marginBottom:10})}/>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>{if(!isArray&&!key.trim())return;onAdd(isArray?null:key.trim(),parseValue(valStr,type),desc.trim());}}
+            style={{fontFamily:T.font,fontSize:13,fontWeight:500,padding:'5px 16px',background:T.blue,color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}}>Stage</button>
+          <button onClick={onCancel} style={{fontFamily:T.font,fontSize:13,padding:'5px 12px',background:'transparent',color:T.textMuted,border:'1px solid rgb(210,214,220)',borderRadius:4,cursor:'pointer'}}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Icon buttons ─────────────────────────────────────────────
+  const IC_EDIT = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+  const IC_DEL = <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>;
+  const IC_DRAG = <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2" r="1.2"/><circle cx="7" cy="2" r="1.2"/><circle cx="3" cy="6" r="1.2"/><circle cx="7" cy="6" r="1.2"/><circle cx="3" cy="10" r="1.2"/><circle cx="7" cy="10" r="1.2"/></svg>;
+  const IC_PLUS = <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+  function IBtn({ onClick, title, color, children }) {
+    const [hov,setHov]=useState(false);
+    return <button onClick={onClick} title={title} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{width:26,height:26,display:'inline-flex',alignItems:'center',justifyContent:'center',background:hov?'rgb(248,250,253)':'transparent',border:'1px solid '+(hov?'rgb(180,185,195)':'rgb(210,214,220)'),borderRadius:4,cursor:'pointer',color:color||T.textMuted,padding:0,flexShrink:0,transition:'all 0.1s'}}>
+      {children}
+    </button>;
+  }
+
+  // ── TREE NODE ────────────────────────────────────────────────
+  function TreeNode({ fieldKey, value, path, depth, editMode, onDelete, onAdd, onSaveRow, onReorder, siblingIndex, descriptions, forceOpen, parentKey }) {
+    const [collapsed, setCollapsed] = useState(true);
+    const [showAdd, setShowAdd] = useState(false);
+    const [editingRow, setEditingRow] = useState(false);
+    const [dragOver, setDragOver] = useState(false);
+    const prevForce = useRef(forceOpen);
+    if (prevForce.current !== forceOpen) { setCollapsed(forceOpen !== true); prevForce.current = forceOpen; }
+
+    const type = getType(value);
+    const isExpandable = type==='object'||(type==='array'&&value&&value.length>0);
+    const isArr = type==='array';
+    const desc = descriptions[fieldKey];
+    const indent = depth*14;
+    const isArrIndex = typeof fieldKey === 'string' && fieldKey.startsWith('[');
+    const displayKey = isArrIndex ? arrayItemLabel(parentKey, parseInt(fieldKey.slice(1,-1),10)) : fieldKey;
+    function handleDragStart(e){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(siblingIndex));}
+    function handleDragOver(e){e.preventDefault();setDragOver(true);}
+    function handleDragLeave(){setDragOver(false);}
+    function handleDrop(e){e.preventDefault();setDragOver(false);const from=parseInt(e.dataTransfer.getData('text/plain'),10);if(!isNaN(from)&&from!==siblingIndex)onReorder(path.slice(0,-1),from,siblingIndex);}
+
+    return (
+      <div draggable={editMode&&!editingRow} onDragStart={editMode?handleDragStart:undefined}
+        onDragOver={editMode?handleDragOver:undefined} onDragLeave={editMode?handleDragLeave:undefined}
+        onDrop={editMode?handleDrop:undefined}
+        style={{outline:dragOver?'2px solid '+T.blue:'none',borderRadius:4}}>
+
+        <div style={{display:'grid',gridTemplateColumns:'minmax(160px,260px) minmax(0,1fr)'+(editMode?' auto':''),gap:16,padding:'8px 0',borderBottom:'1px solid '+T.border2,alignItems:'start',background:dragOver?T.blue25:'transparent'}}>
+          {/* Key col */}
+          <div style={{display:'flex',alignItems:'flex-start',gap:5,paddingLeft:indent}}>
+            {editMode&&<span title="Drag" style={{cursor:'grab',color:T.textMuted,paddingTop:3,flexShrink:0,opacity:0.4}}>{IC_DRAG}</span>}
+            <span onClick={()=>isExpandable&&setCollapsed(c=>!c)}
+              style={{width:16,height:16,flexShrink:0,display:'inline-flex',alignItems:'center',justifyContent:'center',marginTop:2,cursor:isExpandable?'pointer':'default',color:T.textMuted}}>
+              {isExpandable&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{transform:collapsed?'rotate(-90deg)':'none',transition:'transform 0.14s'}}><polyline points="6 9 12 15 18 9"/></svg>}
+            </span>
+            <span onClick={()=>isExpandable&&setCollapsed(c=>!c)}
+              style={{fontFamily:T.mono,fontSize:13,fontWeight:500,color:T.textPrimary,wordBreak:'break-word',cursor:isExpandable?'pointer':'default',lineHeight:1.4}}>{displayKey}</span>{desc&&/\bNA\b/i.test(desc)&&<span style={{marginLeft:6,fontSize:10,fontWeight:600,color:'rgb(180,30,30)',background:'rgb(255,235,235)',border:'1px solid rgb(250,180,180)',borderRadius:3,padding:'1px 5px',verticalAlign:'middle',letterSpacing:'0.03em'}}>NA</span>}{desc&&/\bRedun/i.test(desc)&&<span style={{marginLeft:6,fontSize:10,fontWeight:600,color:'rgb(140,80,0)',background:'rgb(255,244,220)',border:'1px solid rgb(240,200,140)',borderRadius:3,padding:'1px 5px',verticalAlign:'middle',letterSpacing:'0.03em'}}>Redundant</span>}{desc&&/\bNEW\b/.test(desc)&&<span style={{marginLeft:6,fontSize:10,fontWeight:600,color:'rgb(22,110,52)',background:'rgb(220,250,230)',border:'1px solid rgb(140,210,160)',borderRadius:3,padding:'1px 5px',verticalAlign:'middle',letterSpacing:'0.03em'}}>NEW</span>}
+            {editMode&&isExpandable&&(
+              <button onClick={e=>{e.stopPropagation();setCollapsed(false);setShowAdd(true);}}
+                style={{marginLeft:4,width:18,height:18,flexShrink:0,display:'inline-flex',alignItems:'center',justifyContent:'center',background:T.blue25,border:'1px solid '+T.blue,borderRadius:3,cursor:'pointer',color:T.blue,padding:0,marginTop:1}}>
+                {IC_PLUS}
+              </button>
+            )}
+          </div>
+          {/* Info col */}
+          <div style={{minWidth:0}}>
+            <div style={{marginBottom:desc?5:0}}><TypeBadge type={type} count={isArr?value.length:undefined}/></div>
+            {desc&&<div style={{fontSize:13,lineHeight:1.55,color:T.textBody}}>{desc}</div>}
+            {type!=='object'&&type!=='array'&&(
+              <div style={{marginTop:4}}>
+                <span style={{fontFamily:T.mono,fontSize:11,color:T.textBody,background:T.surfaceAlt,border:'1px solid '+T.border1,padding:'2px 7px',borderRadius:4,display:'inline-block',overflowWrap:'anywhere',maxWidth:'100%'}}>
+                  {value===null?'null':JSON.stringify(value)}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* Actions col */}
+          {editMode&&(
+            <div style={{display:'flex',gap:4,paddingTop:3}}>
+              <IBtn onClick={()=>setEditingRow(r=>!r)} title="Edit row" color={editingRow?T.blue:T.textMuted}>{IC_EDIT}</IBtn>
+              <IBtn onClick={()=>onDelete(path)} title="Delete" color={T.danger}>{IC_DEL}</IBtn>
+            </div>
+          )}
+        </div>
+
+        {/* Row edit panel */}
+        {editingRow&&editMode&&(
+          <div style={{paddingLeft:indent+37}}>
+            <RowEditForm fieldKey={fieldKey} value={value} desc={desc} isArrayIndex={isArrIndex}
+              onSave={({key,value:v,desc:d})=>{onSaveRow(path,fieldKey,key,v,d);setEditingRow(false);}}
+              onCancel={()=>setEditingRow(false)}/>
+          </div>
+        )}
+
+        {/* Children */}
+        {isExpandable&&!collapsed&&(
+          <div style={{marginLeft:indent+12,paddingLeft:14,borderLeft:'1px solid '+T.border2}}>
+            {type==='object'&&Object.entries(value).map(([k,v],i)=>(
+              <TreeNode key={k} fieldKey={k} value={v} path={path.concat([k])} depth={depth+1}
+                editMode={editMode} onDelete={onDelete} onAdd={onAdd} onSaveRow={onSaveRow} onReorder={onReorder}
+                siblingIndex={i} descriptions={descriptions} forceOpen={forceOpen}/>
+            ))}
+            {isArr&&value.map((item,i)=>(
+              <React.Fragment key={i}>
+                {i>0&&<div style={{height:1,background:T.border1,margin:'2px 0'}}/>}
+                {item&&typeof item==='object'&&!Array.isArray(item)
+                  ?Object.entries(item).map(([k,v],j)=>(
+                    <TreeNode key={k+'_'+i+'_'+j} fieldKey={k} value={v} path={path.concat([i,k])} depth={depth+1}
+                      editMode={editMode} onDelete={onDelete} onAdd={onAdd} onSaveRow={onSaveRow} onReorder={onReorder}
+                      siblingIndex={j} descriptions={descriptions} forceOpen={forceOpen}/>
+                  ))
+                  :<TreeNode key={'_item_'+i} fieldKey={'['+i+']'} value={item} path={path.concat([i])} depth={depth+1}
+                    editMode={editMode} onDelete={onDelete} onAdd={onAdd} onSaveRow={onSaveRow} onReorder={onReorder}
+                    siblingIndex={i} descriptions={descriptions} forceOpen={forceOpen} parentKey={fieldKey}/>
+                }
+              </React.Fragment>
+            ))}
+            {showAdd&&<div style={{padding:'8px 0'}}>
+              <AddFieldForm isArray={isArr} onAdd={(k,v,d)=>{onAdd(path,k,v,d);setShowAdd(false);}} onCancel={()=>setShowAdd(false)}/>
+            </div>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── TABLE ROW ────────────────────────────────────────────────
+  function TableRow({ fieldKey, value, depth, descriptions, editMode, onDelete, onAdd, onSaveRow, onReorder, path, siblingIndex, colorFamily, parentKey }) {
+    const [expanded, setExpanded] = useState(false);
+    const [showAdd, setShowAdd] = useState(false);
+    const [editingRow, setEditingRow] = useState(false);
+    const [dragOver, setDragOver] = useState(false);
+    const type = getType(value);
+    const isExpandable = type==='object'||(type==='array'&&value&&value.length>0);
+    const isArr = type==='array';
+    const indent = depth*22;
+    const isArrIndex = typeof fieldKey==='string'&&fieldKey.startsWith('[');
+    const childEntries = type==='object'?Object.entries(value):(isArr?value.map((v,i)=>['['+i+']',v,i]):[]);
+    const desc = descriptions[fieldKey];
+    const displayKey = isArrIndex ? arrayItemLabel(parentKey, parseInt(fieldKey.slice(1,-1),10)) : fieldKey;
+
+    function handleDragStart(e){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(siblingIndex));}
+    function handleDragOver(e){e.preventDefault();setDragOver(true);}
+    function handleDragLeave(){setDragOver(false);}
+    function handleDrop(e){e.preventDefault();setDragOver(false);const from=parseInt(e.dataTransfer.getData('text/plain'),10);if(!isNaN(from)&&from!==siblingIndex)onReorder(path.slice(0,-1),from,siblingIndex);}
+
+    const ownFam = isExpandable ? COLOR_FAMILIES[depth % COLOR_FAMILIES.length] : null;
+    // When expanded, show own family color; when collapsed, show inherited parent color
+    const activeFam = (isExpandable && expanded) ? ownFam : colorFamily;
+    const famBg = activeFam ? activeFam.bg[Math.min(depth + 1, activeFam.bg.length-1)] : null;
+    const baseBg = dragOver ? T.blue25 : (famBg || '#fff');
+    const weights=[700,600,500,400]; const sizes=[14,13,12,12];
+    const keyWeight = isExpandable?weights[Math.min(depth,weights.length-1)]:400;
+    const keySize = isExpandable?sizes[Math.min(depth,sizes.length-1)]:12;
+    const keyColor = isExpandable?(activeFam?(depth===0?activeFam.text:activeFam.textChild):T.blue):T.textBody;
+    const rowBorderBottom = depth===0?'2px solid '+T.border1:'1px solid '+T.border2;
+
+    return (
+      <>
+        <tr draggable={editMode&&!editingRow} onDragStart={editMode?handleDragStart:undefined}
+          onDragOver={editMode?handleDragOver:undefined} onDragLeave={editMode?handleDragLeave:undefined}
+          onDrop={editMode?handleDrop:undefined}
+          style={{borderBottom:rowBorderBottom,background:baseBg,outline:dragOver?'2px solid '+T.blue:'none',transition:'background 0.1s'}}>
+
+          <td style={{padding:'11px 18px 11px '+(18+indent)+'px',verticalAlign:'middle',minWidth:220}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              {editMode&&<span title="Drag" style={{cursor:'grab',color:T.textMuted,opacity:0.4,flexShrink:0}}>{IC_DRAG}</span>}
+              {isExpandable?(
+                <span onClick={()=>setExpanded(e=>!e)} style={{cursor:'pointer',color:T.textMuted,display:'inline-flex',flexShrink:0}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{transform:expanded?'none':'rotate(-90deg)',transition:'transform 0.14s'}}><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              ):<span style={{width:10,flexShrink:0}}/>}
+              <span style={{fontFamily:T.mono,fontSize:keySize,fontWeight:keyWeight,color:keyColor,wordBreak:'break-word',letterSpacing:depth===0&&isExpandable?'0.01em':'normal'}}>{displayKey}</span>{desc&&/\bNA\b/i.test(desc)&&<span style={{marginLeft:6,fontSize:10,fontWeight:600,color:'rgb(180,30,30)',background:'rgb(255,235,235)',border:'1px solid rgb(250,180,180)',borderRadius:3,padding:'1px 5px',verticalAlign:'middle',letterSpacing:'0.03em'}}>NA</span>}{desc&&/\bRedun/i.test(desc)&&<span style={{marginLeft:6,fontSize:10,fontWeight:600,color:'rgb(140,80,0)',background:'rgb(255,244,220)',border:'1px solid rgb(240,200,140)',borderRadius:3,padding:'1px 5px',verticalAlign:'middle',letterSpacing:'0.03em'}}>Redundant</span>}{desc&&/\bNEW\b/.test(desc)&&<span style={{marginLeft:6,fontSize:10,fontWeight:600,color:'rgb(22,110,52)',background:'rgb(220,250,230)',border:'1px solid rgb(140,210,160)',borderRadius:3,padding:'1px 5px',verticalAlign:'middle',letterSpacing:'0.03em'}}>NEW</span>}
+              {editMode&&isExpandable&&(
+                <button onClick={()=>{setExpanded(true);setShowAdd(true);}}
+                  style={{width:18,height:18,flexShrink:0,display:'inline-flex',alignItems:'center',justifyContent:'center',background:T.blue25,border:'1px solid '+T.blue,borderRadius:3,cursor:'pointer',color:T.blue,padding:0}}>
+                  {IC_PLUS}
+                </button>
+              )}
+            </div>
+          </td>
+
+          <td style={{padding:'11px 18px',verticalAlign:'middle',whiteSpace:'nowrap'}}>
+            <TypeBadge type={type} count={isArr?value.length:undefined}/>
+          </td>
+
+          <td style={{padding:'11px 18px',verticalAlign:'middle',fontSize:13,color:isExpandable?T.textBody:T.textMuted,lineHeight:1.6,minWidth:240}}>
+            {desc||<span style={{color:'rgb(185,188,194)',fontStyle:'italic',fontSize:12}}>—</span>}
+          </td>
+
+          <td style={{padding:'11px 18px',verticalAlign:'middle',minWidth:180}}>
+            {type!=='object'&&type!=='array'?(
+              <span style={{fontFamily:T.mono,fontSize:12,color:T.textBody,background:T.surfaceAlt,border:'1px solid '+T.border1,padding:'3px 8px',borderRadius:4,display:'inline-block',overflowWrap:'anywhere',maxWidth:300}}>
+                {value===null?'null':JSON.stringify(value)}
+              </span>
+            ):(
+              <span style={{fontSize:12,color:T.textMuted,fontStyle:'italic'}}>
+                {isArr?value.length+' item'+(value.length!==1?'s':''):Object.keys(value).length+' field'+(Object.keys(value).length!==1?'s':'')}
+              </span>
+            )}
+          </td>
+
+          {editMode&&(
+            <td style={{padding:'9px 18px',verticalAlign:'middle',whiteSpace:'nowrap'}}>
+              <div style={{display:'flex',gap:4}}>
+                <IBtn onClick={()=>setEditingRow(r=>!r)} title="Edit row" color={editingRow?T.blue:T.textMuted}>{IC_EDIT}</IBtn>
+                <IBtn onClick={()=>onDelete(path)} title="Delete" color={T.danger}>{IC_DEL}</IBtn>
+              </div>
+            </td>
+          )}
+        </tr>
+
+        {/* Row edit form */}
+        {editingRow&&editMode&&(
+          <tr style={{background:'rgb(243,246,252)'}}>
+            <td colSpan={editMode?5:4} style={{padding:'8px 18px 14px '+(18+indent+28)+'px'}}>
+              <RowEditForm fieldKey={fieldKey} value={value} desc={desc} isArrayIndex={isArrIndex}
+                onSave={({key,value:v,desc:d})=>{onSaveRow(path,fieldKey,key,v,d);setEditingRow(false);}}
+                onCancel={()=>setEditingRow(false)}/>
+            </td>
+          </tr>
+        )}
+
+        {/* Add form */}
+        {showAdd&&editMode&&(
+          <tr style={{background:T.blue25}}>
+            <td colSpan={editMode?5:4} style={{padding:'6px 18px 14px '+(18+indent+32)+'px'}}>
+              <AddFieldForm isArray={isArr} onAdd={(k,v,d)=>{onAdd(path,k,v,d);setShowAdd(false);}} onCancel={()=>setShowAdd(false)}/>
+            </td>
+          </tr>
+        )}
+
+        {/* Children */}
+        {isExpandable&&expanded&&!isArr&&childEntries.map(([k,v],i)=>(
+          <TableRow key={k+'_'+i} fieldKey={k} value={v} depth={depth+1}
+            descriptions={descriptions} editMode={editMode}
+            onDelete={onDelete} onAdd={onAdd} onSaveRow={onSaveRow} onReorder={onReorder}
+            path={path.concat([k])} siblingIndex={i} colorFamily={ownFam}/>
+        ))}
+        {isExpandable&&expanded&&isArr&&value.map((item,ii)=>(
+          <React.Fragment key={ii}>
+            {ii>0&&<tr><td colSpan={editMode?5:4} style={{padding:0,height:2,background:ownFam?ownFam.bg[0]:'rgb(232,234,238)'}}></td></tr>}
+            {item&&typeof item==='object'&&!Array.isArray(item)
+              ? Object.entries(item).map(([k,v],i)=>(
+                  <TableRow key={k+'_'+ii+'_'+i} fieldKey={k} value={v} depth={depth+1}
+                    descriptions={descriptions} editMode={editMode}
+                    onDelete={onDelete} onAdd={onAdd} onSaveRow={onSaveRow} onReorder={onReorder}
+                    path={path.concat([ii,k])} siblingIndex={i} colorFamily={ownFam}/>
+                ))
+              : <TableRow key={'_item_'+ii} fieldKey={'['+ii+']'} value={item} depth={depth+1}
+                  descriptions={descriptions} editMode={editMode}
+                  onDelete={onDelete} onAdd={onAdd} onSaveRow={onSaveRow} onReorder={onReorder}
+                  path={path.concat([ii])} siblingIndex={ii} colorFamily={ownFam} parentKey={fieldKey}/>
+            }
+          </React.Fragment>
+        ))}
+      </>
+    );
+  }
+
+  function TableView({ data, descriptions, editMode, onDelete, onAdd, onSaveRow, onReorder }) {
+    return (
+      <div style={{overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontFamily:T.font}}>
+          <thead>
+            <tr style={{borderBottom:'2px solid '+T.border1,background:'rgb(247,249,252)'}}>
+              {['Field','Type','Description','Value'].map(h=>(
+                <th key={h} style={{padding:'12px 18px',textAlign:'left',fontSize:11,fontWeight:600,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap',borderRight:'1px solid '+T.border2}}>{h}</th>
+              ))}
+              {editMode&&<th style={{padding:'12px 18px',width:80}}/>}
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(data).map(([k,v],i)=>(
+              <TableRow key={k} fieldKey={k} value={v} depth={0}
+                descriptions={descriptions} editMode={editMode}
+                onDelete={onDelete} onAdd={onAdd} onSaveRow={onSaveRow} onReorder={onReorder}
+                path={[k]} siblingIndex={i}/>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // ── Btn ──────────────────────────────────────────────────────
+  function Btn({ onClick, active, danger, children, disabled }) {
+    const [hov,setHov]=useState(false);
+    const bg=active?T.blue:danger?(hov?T.dangerBg:'transparent'):(hov?'rgb(248,250,253)':T.surface);
+    const fg=active?'#fff':danger?T.danger:(hov?T.textPrimary:T.textMuted);
+    const bd=active?T.blue:danger?T.danger:(hov?'rgb(180,183,190)':'rgb(210,214,220)');
+    return <button onClick={onClick} disabled={disabled} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{fontFamily:T.font,fontSize:13,fontWeight:500,padding:'6px 13px',borderRadius:4,cursor:disabled?'default':'pointer',border:'1px solid '+bd,background:bg,color:fg,transition:'all 0.12s',display:'inline-flex',alignItems:'center',gap:6,opacity:disabled?0.5:1}}>
+      {children}</button>;
+  }
+
+  function MetaField({ label, value, editing, onChange, wide }) {
+    return (
+      <div style={{display:'flex',flexDirection:'column',gap:4}}>
+        <span style={{fontSize:10,color:'rgb(126,147,174)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:500}}>{label}</span>
+        {editing?(
+          <input value={value} onChange={e=>onChange(e.target.value)}
+            style={{fontFamily:T.mono,fontSize:12,padding:'4px 8px',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.35)',borderRadius:4,color:'#fff',outline:'none',width:wide?340:220}}/>
+        ):(
+          <span style={{fontSize:13,fontFamily:T.mono,color:'rgb(232,238,246)'}}>{value}</span>
+        )}
+      </div>
+    );
+  }
+
+  // ── New Schema Modal ─────────────────────────────────────────
+  function NewSchemaModal({ onClose, onCreate }) {
+    const [mode, setMode] = useState('json'); // 'json' | 'form'
+    const [jsonText, setJsonText] = useState('');
+    const [jsonErr, setJsonErr] = useState('');
+    const [formName, setFormName] = useState('');
+    const [formSource, setFormSource] = useState('');
+    const [formType, setFormType] = useState('');
+
+    function stripJsonComments(str) {
+      const commentMap = {};
+      // Extract inline comments per field key
+      str.split('\n').forEach(function(line) {
+        const commentMatch = line.match(/\/\/(.+)$/);
+        const keyMatch = line.match(/"([^"]+)"\s*:/);
+        if (commentMatch && keyMatch) {
+          commentMap[keyMatch[1]] = commentMatch[1].trim();
+        }
+      });
+      // Strip // comments then trailing commas before } or ]
+      const clean = str.replace(/\/\/[^\n]*/g, '').replace(/,(\s*[}\]])/g, '$1');
+      return { clean, commentMap };
+    }
+
+    function handleJsonCreate() {
+      setJsonErr('');
+      try {
+        const { clean, commentMap } = stripJsonComments(jsonText.trim());
+        const parsed = JSON.parse(clean);
+        const descs = Object.keys(commentMap).length ? commentMap : null;
+        const name = formName.trim() || parsed.type || 'New Schema';
+        onCreate({ id: 's' + Date.now(), name, data: parsed, descriptions: descs });
+        onClose();
+      } catch(e) { setJsonErr('Invalid JSON: ' + e.message); }
+    }
+
+    function handleFormCreate() {
+      if (!formType.trim()) { setJsonErr('Event type name is required'); return; }
+      const data = {
+        id: '', time: new Date().toISOString(), type: formType.trim(),
+        source: formSource.trim() || 'es/entity/new', specversion: '1.0',
+        datacontenttype: 'application/json',
+        data: { entityId: '', entityStatus: '', meta: { userType: '', user: '' } }
+      };
+      onCreate({ id: 's' + Date.now(), name: formType.trim(), data, descriptions: null });
+      onClose();
+    }
+
+    const INP = { border:'1px solid rgb(210,214,220)', borderRadius:4, padding:'8px 10px', fontFamily:T.font, fontSize:13, color:T.textPrimary, outline:'none', width:'100%', boxSizing:'border-box' };
+
+    return (
+      <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div onClick={onClose} style={{position:'absolute',inset:0,background:'rgba(15,23,42,0.45)'}}></div>
+        <div style={{position:'relative',background:'#fff',borderRadius:10,width:580,maxWidth:'95vw',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',overflow:'hidden'}}>
+          {/* Header */}
+          <div style={{padding:'18px 24px',borderBottom:'1px solid '+T.border1,display:'flex',alignItems:'center',gap:12}}>
+            <span style={{fontSize:16,fontWeight:600,color:T.textPrimary,flex:1}}>New Schema</span>
+            <button onClick={onClose} style={{border:'none',background:'transparent',cursor:'pointer',fontSize:20,color:T.textMuted,lineHeight:1,padding:4}}>×</button>
+          </div>
+          {/* Mode tabs */}
+          <div style={{display:'flex',gap:0,borderBottom:'1px solid '+T.border1}}>
+            {[['json','Paste JSON'],['form','Fill in fields']].map(([k,lbl])=>(
+              <button key={k} onClick={()=>{setMode(k);setJsonErr('');}} style={{flex:1,padding:'10px 16px',border:'none',background:'transparent',borderBottom:`2px solid ${mode===k?T.blue:'transparent'}`,color:mode===k?T.blue:T.textMuted,fontFamily:T.font,fontSize:13,fontWeight:mode===k?600:400,cursor:'pointer'}}>{lbl}</button>
+            ))}
+          </div>
+          {/* Body */}
+          <div style={{padding:'20px 24px'}}>
+            {mode==='json' ? (
+              <div>
+                <div style={{fontSize:12,color:T.textMuted,marginBottom:8}}>Paste a complete JSON object for the schema. The event <code>type</code> field will be used as the schema name.</div>
+                <textarea value={jsonText} onChange={e=>setJsonText(e.target.value)} placeholder={'{\n  "type": "es.entity.eligibility-request.MY_EVENT",\n  "source": "es/eligibility-request/123",\n  ...\n}'} rows={12}
+                  style={{...INP,fontFamily:T.mono,fontSize:12,resize:'vertical',lineHeight:1.5}} />
+                <div style={{marginTop:10,fontSize:12,color:T.textMuted}}>Schema name (optional — defaults to <code>type</code> field):</div>
+                <input value={formName} onChange={e=>setFormName(e.target.value)} placeholder="e.g. ELIGIBILITY_REQUEST_SENT" style={{...INP,marginTop:6}} />
+              </div>
+            ) : (
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <div>
+                  <label style={{fontSize:12,fontWeight:500,color:T.textMuted,display:'block',marginBottom:5}}>Event Type Name *</label>
+                  <input value={formType} onChange={e=>setFormType(e.target.value)} placeholder="es.entity.eligibility-request.MY_EVENT" style={INP} />
+                </div>
+                <div>
+                  <label style={{fontSize:12,fontWeight:500,color:T.textMuted,display:'block',marginBottom:5}}>Source</label>
+                  <input value={formSource} onChange={e=>setFormSource(e.target.value)} placeholder="es/eligibility-request/id" style={INP} />
+                </div>
+                <div style={{fontSize:12,color:T.textMuted}}>A minimal schema will be created with a <code>data</code> object. You can add fields in edit mode.</div>
+              </div>
+            )}
+            {jsonErr && <div style={{marginTop:10,fontSize:12,color:T.danger,background:T.dangerBg,padding:'6px 10px',borderRadius:4}}>{jsonErr}</div>}
+          </div>
+          {/* Footer */}
+          <div style={{padding:'14px 24px',borderTop:'1px solid '+T.border1,display:'flex',justifyContent:'flex-end',gap:10}}>
+            <button onClick={onClose} style={{fontFamily:T.font,fontSize:13,padding:'7px 18px',border:'1px solid '+T.border1,borderRadius:4,background:'#fff',color:T.textMuted,cursor:'pointer'}}>Cancel</button>
+            <button onClick={mode==='json'?handleJsonCreate:handleFormCreate}
+              style={{fontFamily:T.font,fontSize:13,fontWeight:600,padding:'7px 20px',border:'none',borderRadius:4,background:T.blue,color:'#fff',cursor:'pointer'}}>Create Schema</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  // ── Delete Confirm Modal ─────────────────────────────────────
+  function DeleteConfirmModal({ schemaName, onConfirm, onCancel }) {
+    return (
+      <div style={{position:'fixed',inset:0,zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div onClick={onCancel} style={{position:'absolute',inset:0,background:'rgba(15,23,42,0.5)'}}></div>
+        <div style={{position:'relative',background:'#fff',borderRadius:10,width:420,maxWidth:'95vw',boxShadow:'0 20px 60px rgba(0,0,0,0.22)',overflow:'hidden'}}>
+          <div style={{padding:'20px 24px 16px',display:'flex',gap:14,alignItems:'flex-start'}}>
+            <div style={{width:40,height:40,borderRadius:8,background:T.dangerBg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.danger} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </div>
+            <div>
+              <div style={{fontSize:15,fontWeight:600,color:T.textPrimary,marginBottom:6}}>Delete schema?</div>
+              <div style={{fontSize:13,color:T.textBody,lineHeight:1.5}}><strong>"{schemaName}"</strong> will be permanently deleted. This cannot be undone.</div>
+            </div>
+          </div>
+          <div style={{padding:'12px 24px 18px',display:'flex',justifyContent:'flex-end',gap:10,borderTop:'1px solid '+T.border1}}>
+            <button onClick={onCancel} style={{fontFamily:T.font,fontSize:13,padding:'7px 18px',border:'1px solid '+T.border1,borderRadius:4,background:'#fff',color:T.textMuted,cursor:'pointer'}}>Cancel</button>
+            <button onClick={onConfirm} style={{fontFamily:T.font,fontSize:13,fontWeight:600,padding:'7px 18px',border:'none',borderRadius:4,background:T.danger,color:'#fff',cursor:'pointer'}}>Delete</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Payload Accordion ─────────────────────────────────────────
+  function PayloadAccordion({ data, depth }) {
+    depth = depth || 0;
+    if (data === null || data === undefined) return <span style={{color:T.textMuted,fontStyle:'italic',fontFamily:T.mono,fontSize:12}}>null</span>;
+    if (typeof data !== 'object') {
+      var c = typeof data==='string'?'rgb(39,105,102)':typeof data==='number'?'rgb(133,79,11)':'rgb(207,19,34)';
+      return <span style={{fontFamily:T.mono,fontSize:12,color:c}}>{JSON.stringify(data)}</span>;
+    }
+    var isArr = Array.isArray(data);
+    var entries = isArr ? data.map(function(v,i){return ['['+i+']',v];}) : Object.entries(data);
+    return <div>{entries.map(function(entry,i){return <PayloadRow key={entry[0]+'_'+i} fieldKey={entry[0]} value={entry[1]} depth={depth} isLast={i===entries.length-1}/>;})}</div>;
+  }
+  function PayloadRow({ fieldKey, value, depth, isLast }) {
+    var [open, setOpen] = useState(true);
+    var isObj = value !== null && value !== undefined && typeof value === 'object';
+    var isArr = isObj && Array.isArray(value);
+    var indent = depth * 20;
+    var type = getType(value);
+    var tc = TYPE_COLORS[type] || {fg:T.textMuted, bg:T.surfaceAlt};
+    var count = isObj ? (isArr ? value.length+' item'+(value.length!==1?'s':'') : Object.keys(value).length+' field'+(Object.keys(value).length!==1?'s':'')) : '';
+    return (
+      <div style={{borderBottom:isLast?'none':'1px solid '+T.border2}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 16px 9px '+(16+indent)+'px',cursor:isObj?'pointer':'default',userSelect:'none'}}
+          onClick={isObj?function(){setOpen(function(o){return !o;});}:undefined}>
+          {isObj?(<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2.5" strokeLinecap="round" style={{transform:open?'none':'rotate(-90deg)',transition:'transform 0.13s',flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>):<span style={{width:9,display:'inline-block',flexShrink:0}}/>}
+          <span style={{fontFamily:T.mono,fontSize:12,fontWeight:isObj?600:400,color:isObj?T.blue:T.textPrimary,minWidth:160,flexShrink:0}}>{fieldKey}</span>
+          {!isObj&&<span style={{fontFamily:T.mono,fontSize:12,color:tc.fg,background:tc.bg,padding:'1px 6px',borderRadius:3,maxWidth:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{value===null?'null':JSON.stringify(value)}</span>}
+          {isObj&&<span style={{fontSize:11,color:T.textMuted,marginLeft:'auto'}}>{count}</span>}
+        </div>
+        {isObj&&open&&<div style={{borderLeft:'2px solid '+T.border2,marginLeft:(indent+20)+'px'}}><PayloadAccordion data={value} depth={depth+1}/></div>}
+      </div>
+    );
+  }
+  function PayloadPreview() {
+    var [payloadData, setPayloadData] = useState(null);
+    var [fileName, setFileName] = useState('');
+    var [err, setErr] = useState('');
+    var [dragOver, setDragOver] = useState(false);
+    var fileRef = useRef(null);
+    function handleFile(file) {
+      if (!file) return; setFileName(file.name);
+      var reader = new FileReader(); reader.onload = function(e) { try { setPayloadData(JSON.parse(e.target.result)); setErr(''); } catch(ex) { setErr('Invalid JSON: '+ex.message); setPayloadData(null); } }; reader.readAsText(file);
+    }
+    return !payloadData ? (
+      <div style={{border:'2px dashed '+(dragOver?T.blue:T.border1),borderRadius:10,padding:'72px 24px',textAlign:'center',background:dragOver?T.blue25:'transparent',transition:'all 0.15s',cursor:'pointer'}}
+        onDragOver={function(e){e.preventDefault();setDragOver(true);}} onDragLeave={function(){setDragOver(false);}}
+        onDrop={function(e){e.preventDefault();setDragOver(false);handleFile(e.dataTransfer.files[0]);}}
+        onClick={function(){fileRef.current&&fileRef.current.click();}}>
+        <input ref={fileRef} type="file" accept=".json" style={{display:'none'}} onChange={function(e){handleFile(e.target.files[0]);}}/>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round" style={{margin:'0 auto 12px',display:'block'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div style={{fontSize:15,fontWeight:600,color:T.textPrimary,marginBottom:4}}>Upload a JSON payload</div>
+        <div style={{fontSize:12,color:T.textMuted}}>Drag & drop or click to browse · .json files only</div>
+        {err&&<div style={{marginTop:12,fontSize:12,color:T.danger,background:T.dangerBg,padding:'6px 12px',borderRadius:4,display:'inline-block'}}>{err}</div>}
+      </div>
+    ) : (
+      <div>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16,padding:'10px 16px',background:T.surfaceAlt,borderRadius:8,border:'1px solid '+T.border1}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style={{fontSize:13,fontFamily:T.mono,color:T.textPrimary,flex:1}}>{fileName}</span>
+          <button onClick={function(){setPayloadData(null);setFileName('');setErr('');}} style={{border:'1px solid '+T.border1,background:'#fff',cursor:'pointer',color:T.textMuted,fontSize:12,padding:'3px 10px',borderRadius:3,fontFamily:T.font}}>× Clear</button>
+        </div>
+        <div style={{background:T.surface,border:'1px solid '+T.border1,borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}><PayloadAccordion data={payloadData} depth={0}/></div>
+      </div>
+    );
+  }
+
+  // ── Compare View ──────────────────────────────────────────────
+  function CompareView({ schemas }) {
+    var [leftIdx, setLeftIdx] = useState(0);
+    var [rightIdx, setRightIdx] = useState(Math.min(1, schemas.length-1));
+    var [leftCustom, setLeftCustom] = useState(null);
+    var [rightCustom, setRightCustom] = useState(null);
+    var [leftName, setLeftName] = useState('');
+    var [rightName, setRightName] = useState('');
+    function handleUpload(side, file) {
+      if (!file) return;
+      var reader = new FileReader(); reader.onload = function(e) { try { var p=JSON.parse(e.target.result); if(side==='left'){setLeftCustom(p);setLeftIdx(-1);setLeftName(file.name);}else{setRightCustom(p);setRightIdx(-1);setRightName(file.name);} } catch(ex){} }; reader.readAsText(file);
+    }
+    function flatten(obj, prefix) {
+      prefix = prefix||''; if(obj===null||obj===undefined) return prefix?{[prefix]:obj}:{};
+      if(typeof obj!=='object') return {[prefix]:obj};
+      var res={};
+      if(Array.isArray(obj)) obj.forEach(function(v,i){Object.assign(res,flatten(v,prefix+'['+i+']'));});
+      else Object.entries(obj).forEach(function([k,v]){var p=prefix?prefix+'.'+k:k;if(v!==null&&typeof v==='object')Object.assign(res,flatten(v,p));else res[p]=v;});
+      return res;
+    }
+    var leftData = leftIdx===-1?leftCustom:(schemas[leftIdx]&&schemas[leftIdx].data);
+    var rightData = rightIdx===-1?rightCustom:(schemas[rightIdx]&&schemas[rightIdx].data);
+    var lFlat=leftData?flatten(leftData):{}, rFlat=rightData?flatten(rightData):{};
+    var allKeys=Array.from(new Set(Object.keys(lFlat).concat(Object.keys(rFlat)))).sort();
+    var diffs=allKeys.map(function(k){var lv=lFlat[k],rv=rFlat[k],inL=k in lFlat,inR=k in rFlat,st=!inL?'added':!inR?'removed':JSON.stringify(lv)!==JSON.stringify(rv)?'changed':'same';return{key:k,leftVal:lv,rightVal:rv,inLeft:inL,inRight:inR,status:st};});
+    var changed=diffs.filter(function(d){return d.status!=='same';});
+    var added=diffs.filter(function(d){return d.status==='added';}).length;
+    var removed=diffs.filter(function(d){return d.status==='removed';}).length;
+    var modified=diffs.filter(function(d){return d.status==='changed';}).length;
+    var SC={added:{bg:'rgb(240,255,244)',bd:'rgb(180,230,190)',c:'rgb(22,110,52)',lbl:'Added'},removed:{bg:'rgb(255,244,244)',bd:'rgb(240,180,180)',c:'rgb(180,30,30)',lbl:'Removed'},changed:{bg:'rgb(255,248,235)',bd:'rgb(240,210,150)',c:'rgb(133,79,11)',lbl:'Changed'}};
+    var SEL={fontFamily:T.font,fontSize:12,padding:'5px 8px',border:'1px solid '+T.border1,borderRadius:4,background:'#fff',color:T.textPrimary,cursor:'pointer'};
+    var lLabel=leftIdx===-1?(leftName||'Uploaded'):(schemas[leftIdx]&&schemas[leftIdx].name)||'Schema';
+    var rLabel=rightIdx===-1?(rightName||'Uploaded'):(schemas[rightIdx]&&schemas[rightIdx].name)||'Schema';
+    return (
+      <div>
+        <div style={{display:'flex',gap:12,marginBottom:20,alignItems:'center',flexWrap:'wrap',background:T.surfaceAlt,padding:'12px 16px',borderRadius:8,border:'1px solid '+T.border1}}>
+          <span style={{fontSize:11,fontWeight:700,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.05em'}}>Left</span>
+          <select value={leftIdx} onChange={function(e){setLeftIdx(Number(e.target.value));}} style={SEL}>{schemas.map(function(s,i){return <option key={s.id} value={i}>{s.name}</option>;})}{leftIdx===-1&&<option value={-1}>{leftName||'Uploaded'}</option>}</select>
+          <label style={{fontSize:11,color:T.blue,cursor:'pointer',border:'1px solid '+T.blue,borderRadius:3,padding:'4px 9px',whiteSpace:'nowrap',fontFamily:T.font,fontWeight:500}}>Upload JSON<input type="file" accept=".json" style={{display:'none'}} onChange={function(e){handleUpload('left',e.target.files[0]);}}/></label>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round" style={{margin:'0 4px'}}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <span style={{fontSize:11,fontWeight:700,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.05em'}}>Right</span>
+          <select value={rightIdx} onChange={function(e){setRightIdx(Number(e.target.value));}} style={SEL}>{schemas.map(function(s,i){return <option key={s.id} value={i}>{s.name}</option>;})}{rightIdx===-1&&<option value={-1}>{rightName||'Uploaded'}</option>}</select>
+          <label style={{fontSize:11,color:T.blue,cursor:'pointer',border:'1px solid '+T.blue,borderRadius:3,padding:'4px 9px',whiteSpace:'nowrap',fontFamily:T.font,fontWeight:500}}>Upload JSON<input type="file" accept=".json" style={{display:'none'}} onChange={function(e){handleUpload('right',e.target.files[0]);}}/></label>
+          {changed.length>0&&<div style={{display:'flex',gap:8,marginLeft:'auto'}}>{[['Added',added,'rgb(22,110,52)','rgb(240,255,244)'],['Removed',removed,'rgb(180,30,30)','rgb(255,244,244)'],['Changed',modified,'rgb(133,79,11)','rgb(255,248,235)']].map(function(item){return <span key={item[0]} style={{fontSize:12,fontWeight:600,color:item[2],background:item[3],padding:'3px 10px',borderRadius:10}}>{item[1]} {item[0]}</span>;})}</div>}
+        </div>
+        <div style={{background:T.surface,border:'1px solid '+T.border1,borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1.2fr 1fr 1fr',borderBottom:'2px solid '+T.border1,background:'rgb(247,249,252)'}}>
+            <div style={{padding:'10px 16px',fontSize:11,fontWeight:600,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em',borderRight:'1px solid '+T.border2}}>Field path</div>
+            <div style={{padding:'10px 16px',fontSize:11,fontWeight:600,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em',borderRight:'1px solid '+T.border2}}>{lLabel}</div>
+            <div style={{padding:'10px 16px',fontSize:11,fontWeight:600,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em'}}>{rLabel}</div>
+          </div>
+          {!leftData||!rightData?(<div style={{padding:'32px 16px',textAlign:'center',color:T.textMuted,fontSize:13}}>Select or upload both schemas to see diff.</div>):changed.length===0?(<div style={{padding:'32px 16px',textAlign:'center',color:'rgb(22,110,52)',fontSize:13,fontWeight:500}}>✓ Schemas are identical across all {allKeys.length} fields</div>):changed.map(function(d,i){var sc=SC[d.status];return(
+            <div key={d.key} style={{display:'grid',gridTemplateColumns:'1.2fr 1fr 1fr',borderBottom:i<changed.length-1?'1px solid '+T.border2:'none',background:sc.bg}}>
+              <div style={{padding:'10px 16px',borderRight:'1px solid '+T.border2,display:'flex',alignItems:'flex-start',gap:8}}><span style={{fontFamily:T.mono,fontSize:11,color:T.textPrimary,wordBreak:'break-all',flex:1}}>{d.key}</span><span style={{fontSize:10,fontWeight:600,color:sc.c,border:'1px solid '+sc.bd,borderRadius:3,padding:'1px 5px',whiteSpace:'nowrap',flexShrink:0}}>{sc.lbl}</span></div>
+              <div style={{padding:'10px 16px',borderRight:'1px solid '+T.border2,fontFamily:T.mono,fontSize:11,color:d.inLeft?T.textPrimary:'rgb(185,188,194)',fontStyle:d.inLeft?'normal':'italic',wordBreak:'break-all'}}>{d.inLeft?JSON.stringify(d.leftVal):'—'}</div>
+              <div style={{padding:'10px 16px',fontFamily:T.mono,fontSize:11,color:d.inRight?T.textPrimary:'rgb(185,188,194)',fontStyle:d.inRight?'normal':'italic',wordBreak:'break-all'}}>{d.inRight?JSON.stringify(d.rightVal):'—'}</div>
+            </div>
+          );})}
+        </div>
+        <div style={{marginTop:8,fontSize:11,color:T.textMuted,textAlign:'right'}}>{allKeys.length} total fields · {changed.length} diff{changed.length!==1?'s':''}</div>
+      </div>
+    );
+  }
+
+
+  // ── Compare Screen (GitHub PR diff) ──────────────────────────
+  function CompareScreen({ schemas }) {
+    var [compareMode, setCompareMode] = useState('schemas');
+    var [leftSchemaIdx, setLeftSchemaIdx] = useState(-1);
+    var [rightSchemaIdx, setRightSchemaIdx] = useState(-1);
+    var [leftPayText, setLeftPayText] = useState('');
+    var [rightPayText, setRightPayText] = useState('');
+    var [leftPayData, setLeftPayData] = useState(null);
+    var [rightPayData, setRightPayData] = useState(null);
+    var [leftPayErr, setLeftPayErr] = useState('');
+    var [rightPayErr, setRightPayErr] = useState('');
+    var leftPayRef = useRef(null);
+    var rightPayRef = useRef(null);
+    var leftScrollRef = useRef(null);
+    var rightScrollRef = useRef(null);
+    var syncingScroll = useRef(false);
+
+    // Sync scroll between panels
+    function makeSyncHandler(otherRef) {
+      return function(e) {
+        if (syncingScroll.current) return;
+        syncingScroll.current = true;
+        if (otherRef.current) otherRef.current.scrollTop = e.target.scrollTop;
+        syncingScroll.current = false;
+      };
+    }
+
+    function tryParsePayload(text, side) {
+      if (!text.trim()) { if(side==='left'){setLeftPayData(null);setLeftPayErr('');}else{setRightPayData(null);setRightPayErr('');} return; }
+      try { var p=JSON.parse(text); if(side==='left'){setLeftPayData(p);setLeftPayErr('');}else{setRightPayData(p);setRightPayErr('');} }
+      catch(e) { if(side==='left'){setLeftPayErr(e.message);setLeftPayData(null);}else{setRightPayErr(e.message);setRightPayData(null);} }
+    }
+    function handlePayFile(side, file) {
+      if(!file) return;
+      var reader=new FileReader(); reader.onload=function(e){var t=e.target.result; if(side==='left'){setLeftPayText(t);tryParsePayload(t,'left');}else{setRightPayText(t);tryParsePayload(t,'right');}};reader.readAsText(file);
+    }
+    function clearSide(side) {
+      if(side==='left'){setLeftSchemaIdx(-1);setLeftPayText('');setLeftPayData(null);setLeftPayErr('');}
+      else{setRightSchemaIdx(-1);setRightPayText('');setRightPayData(null);setRightPayErr('');}
+    }
+
+    var leftData = compareMode==='schemas'?(leftSchemaIdx>=0?schemas[leftSchemaIdx]&&schemas[leftSchemaIdx].data:null):leftPayData;
+    var rightData = compareMode==='schemas'?(rightSchemaIdx>=0?schemas[rightSchemaIdx]&&schemas[rightSchemaIdx].data:null):rightPayData;
+    var leftLabel = leftSchemaIdx>=0?(schemas[leftSchemaIdx]&&schemas[leftSchemaIdx].name)||'Before':'Before';
+    var rightLabel = rightSchemaIdx>=0?(schemas[rightSchemaIdx]&&schemas[rightSchemaIdx].name)||'After':'After';
+
+    function flatten(obj, prefix) {
+      prefix=prefix||''; if(obj===null||obj===undefined) return prefix?{[prefix]:obj}:{};
+      if(typeof obj!=='object') return {[prefix]:obj};
+      var res={};
+      if(Array.isArray(obj)) obj.forEach(function(v,i){Object.assign(res,flatten(v,prefix+'['+i+']'));});
+      else Object.entries(obj).forEach(function([k,v]){var p=prefix?prefix+'.'+k:k;if(v!==null&&typeof v==='object')Object.assign(res,flatten(v,p));else res[p]=v;});
+      return res;
+    }
+
+    var lFlat=leftData?flatten(leftData):{};
+    var rFlat=rightData?flatten(rightData):{};
+    var hasBoth=!!(leftData&&rightData);
+
+    // Build unified key list — union of both sides, preserving order
+    var allKeys=Array.from(new Set(Object.keys(lFlat).concat(Object.keys(rFlat)))).sort();
+
+    // Build rows: one per key, with status
+    var rows=allKeys.map(function(k){
+      var lv=lFlat[k], rv=rFlat[k], inL=k in lFlat, inR=k in rFlat;
+      var st = !hasBoth ? (inL?'left-only':'right-only') : (!inL?'added':!inR?'removed':JSON.stringify(lv)!==JSON.stringify(rv)?'changed':'same');
+      return {key:k, lv:lv, rv:rv, inL:inL, inR:inR, st:st};
+    });
+
+    // Single-side: show left or right keys only
+    var leftRows = leftData ? (hasBoth ? rows : Object.keys(lFlat).sort().map(function(k){return{key:k,lv:lFlat[k],inL:true,inR:false,st:'left-only'};})) : [];
+    var rightRows = rightData ? (hasBoth ? rows : Object.keys(rFlat).sort().map(function(k){return{key:k,rv:rFlat[k],inL:false,inR:true,st:'right-only'};})) : [];
+
+    var displayRows = hasBoth ? rows : (leftRows.length>0?leftRows:rightRows);
+    var added=hasBoth?rows.filter(function(r){return r.st==='added';}).length:0;
+    var removed=hasBoth?rows.filter(function(r){return r.st==='removed';}).length:0;
+    var changed=hasBoth?rows.filter(function(r){return r.st==='changed';}).length:0;
+    var totalFields = allKeys.length;
+
+    var ROW_H=34; var MONO=T.mono;
+    var SEL_S={fontFamily:T.font,fontSize:11,padding:'3px 6px',border:'1px solid '+T.border1,borderRadius:3,background:'#fff',color:T.textPrimary,cursor:'pointer',maxWidth:180};
+    var TA_S={flex:1,fontFamily:MONO,fontSize:12,padding:12,border:'1px solid '+T.border1,borderRadius:4,outline:'none',resize:'none',color:T.textPrimary,lineHeight:1.6,background:'#fff',marginTop:8};
+    var LN_W=38; // line number gutter width
+
+    function rowBgLeft(st) {
+      if(!hasBoth) return 'transparent';
+      return st==='removed'?'rgb(255,235,235)':st==='changed'?'rgb(255,251,235)':'transparent';
+    }
+    function rowBgRight(st) {
+      if(!hasBoth) return 'transparent';
+      return st==='added'?'rgb(235,255,240)':st==='changed'?'rgb(235,255,240)':'transparent';
+    }
+    function valFgLeft(st) { return hasBoth&&st==='removed'?'rgb(160,30,30)':T.textPrimary; }
+    function valFgRight(st) { return hasBoth&&(st==='added'||st==='changed')?'rgb(22,110,52)':T.textPrimary; }
+    function keyFgLeft(st) { return hasBoth&&st==='removed'?'rgb(160,30,30)':T.textBody; }
+    function keyFgRight(st) { return hasBoth&&st==='added'?'rgb(22,110,52)':T.textBody; }
+
+    function SideHeader({side}) {
+      var schemaIdx=side==='left'?leftSchemaIdx:rightSchemaIdx;
+      var setSchemaIdx=side==='left'?setLeftSchemaIdx:setRightSchemaIdx;
+      var payErr=side==='left'?leftPayErr:rightPayErr;
+      var payRef=side==='left'?leftPayRef:rightPayRef;
+      var label=side==='left'?leftLabel:rightLabel;
+      var hasData=side==='left'?(leftData!==null):(rightData!==null);
+      return (
+        <div style={{padding:'10px 14px',background:'rgb(247,249,252)',borderBottom:'1px solid '+T.border2,flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+            <span style={{fontSize:12,fontWeight:700,color:T.textPrimary,fontFamily:MONO,flex:1}}>{label}</span>
+            {hasData&&<button onClick={()=>clearSide(side)} style={{fontSize:11,color:T.textMuted,border:'1px solid '+T.border1,borderRadius:3,padding:'1px 6px',background:'#fff',cursor:'pointer',fontFamily:T.font}}>Clear</button>}
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+            <select value={schemaIdx} onChange={function(e){setSchemaIdx(Number(e.target.value));}} style={SEL_S}>
+              <option value={-1}>— Select schema —</option>
+              {schemas.map(function(s,i){return <option key={s.id} value={i}>{s.name}</option>;})}
+            </select>
+            {compareMode==='payloads'&&(
+              <>
+                <span style={{fontSize:10,color:T.textMuted}}>·</span>
+                <label style={{fontSize:11,color:T.blue,cursor:'pointer',border:'1px solid '+T.blue,borderRadius:3,padding:'2px 8px',fontFamily:T.font,fontWeight:500,whiteSpace:'nowrap'}}>
+                  Upload payload<input type="file" accept=".json" style={{display:'none'}} ref={payRef} onChange={function(e){handlePayFile(side,e.target.files[0]);}}/>
+                </label>
+                {payErr&&<span style={{fontSize:10,color:T.danger,marginLeft:4}}>{payErr}</span>}
+              </>
+            )}
+          </div>
+          {compareMode==='payloads'&&!(side==='left'?leftPayData:rightPayData)&&(
+            <textarea value={side==='left'?leftPayText:rightPayText}
+              onChange={function(e){var t=e.target.value;side==='left'?(setLeftPayText(t),tryParsePayload(t,'left')):(setRightPayText(t),tryParsePayload(t,'right'));}}
+              placeholder="Paste payload JSON…" style={TA_S}/>
+          )}
+        </div>
+      );
+    }
+
+    function TableHeader({label}) {
+      return (
+        <div style={{display:'grid',gridTemplateColumns:LN_W+'px 1fr 1fr',position:'sticky',top:0,zIndex:2,background:'rgb(247,249,252)',borderBottom:'1px solid '+T.border1}}>
+          <div style={{background:'rgb(240,242,245)',borderRight:'1px solid '+T.border2}}/>
+          <div style={{padding:'6px 12px',fontSize:10,fontWeight:700,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em',borderRight:'1px solid '+T.border2}}>Field path</div>
+          <div style={{padding:'6px 12px',fontSize:10,fontWeight:700,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em'}}>{label}</div>
+        </div>
+      );
+    }
+
+    function PanelRows({side, scrollRef}) {
+      var rowsToRender = side==='left'?
+        (hasBoth?rows:(leftData?rows:[])):
+        (hasBoth?rows:(rightData?rows:[]));
+      var hasThisSide = side==='left'?!!leftData:!!rightData;
+      if (!hasThisSide) {
+        return <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:T.textMuted,fontSize:13,padding:24,textAlign:'center'}}>
+          {compareMode==='schemas'?'Select a schema above.':'Upload or paste a payload above.'}
+        </div>;
+      }
+      return (
+        <div ref={scrollRef} onScroll={makeSyncHandler(side==='left'?rightScrollRef:leftScrollRef)} style={{flex:1,overflowY:'auto'}}>
+          {rowsToRender.map(function(row,i){
+            var isLeft=side==='left'; var ln=i+1;
+            var inSide=isLeft?row.inL:row.inR;
+            var val=isLeft?row.lv:row.rv;
+            var bg=isLeft?rowBgLeft(row.st):rowBgRight(row.st);
+            var vfg=isLeft?valFgLeft(row.st):valFgRight(row.st);
+            var kfg=isLeft?keyFgLeft(row.st):keyFgRight(row.st);
+            var showBlank=hasBoth&&(isLeft?!row.inL:!row.inR);
+            return (
+              <div key={row.key+i} style={{display:'grid',gridTemplateColumns:LN_W+'px 1fr 1fr',borderBottom:'1px solid '+T.border2,background:showBlank?'rgb(245,246,248)':bg,minHeight:ROW_H}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',padding:'0 8px',background:'rgb(240,242,245)',borderRight:'1px solid '+T.border2,color:'rgb(180,184,192)',fontSize:10,fontFamily:MONO,userSelect:'none',flexShrink:0}}>{ln}</div>
+                <div style={{height:ROW_H,display:'flex',alignItems:'center',padding:'0 12px',borderRight:'1px solid '+T.border2,overflow:'hidden'}}><span style={{fontFamily:MONO,fontSize:11,color:kfg,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row.key}</span></div>
+                <div style={{height:ROW_H,display:'flex',alignItems:'center',padding:'0 12px',overflow:'hidden'}}>
+                  {showBlank?<span style={{color:T.border2,fontSize:12}}>—</span>:inSide?<span style={{fontFamily:MONO,fontSize:11,color:vfg,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{JSON.stringify(val)}</span>:<span style={{color:T.border2,fontSize:12}}>—</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        {/* Mode toggle + counters */}
+        <div style={{padding:'10px 20px',background:'#fff',borderBottom:'1px solid '+T.border1,display:'flex',alignItems:'center',gap:12,flexShrink:0,flexWrap:'wrap'}}>
+          <div style={{display:'flex',border:'1px solid rgb(210,214,220)',borderRadius:5,overflow:'hidden'}}>
+            {[['schemas','Compare Schemas'],['payloads','Compare Payloads']].map(function([id,lbl],idx,arr){return(
+              <button key={id} onClick={()=>setCompareMode(id)}
+                style={{fontFamily:T.font,fontSize:12,fontWeight:500,padding:'5px 14px',border:'none',background:compareMode===id?T.blue:'#fff',color:compareMode===id?'#fff':T.textMuted,cursor:'pointer',borderRight:idx<arr.length-1?'1px solid rgb(210,214,220)':'none',transition:'all 0.12s'}}>
+                {lbl}
+              </button>
+            );})}
+          </div>
+          {(leftData||rightData)&&(
+            <div style={{display:'flex',gap:10,marginLeft:'auto',alignItems:'center',flexWrap:'wrap'}}>
+              {hasBoth&&<><span style={{fontSize:12,fontWeight:600,color:'rgb(22,110,52)',background:'rgb(235,255,240)',padding:'2px 10px',borderRadius:10}}>{added} Added</span>
+              <span style={{fontSize:12,fontWeight:600,color:'rgb(160,30,30)',background:'rgb(255,235,235)',padding:'2px 10px',borderRadius:10}}>{removed} Removed</span>
+              <span style={{fontSize:12,fontWeight:600,color:'rgb(133,79,11)',background:'rgb(255,251,235)',padding:'2px 10px',borderRadius:10}}>{changed} Changed</span></>}
+              <span style={{fontSize:11,color:T.textMuted}}>{totalFields} field{totalFields!==1?'s':''}</span>
+            </div>
+          )}
+        </div>
+        {/* Two panels */}
+        <div style={{flex:1,display:'flex',overflow:'hidden',minHeight:0}}>
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',borderRight:'1px solid '+T.border1}}>
+            <SideHeader side="left"/>
+            {leftData&&<TableHeader label={leftLabel}/>}
+            <PanelRows side="left" scrollRef={leftScrollRef}/>
+          </div>
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            <SideHeader side="right"/>
+            {rightData&&<TableHeader label={rightLabel}/>}
+            <PanelRows side="right" scrollRef={rightScrollRef}/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  // ── Save Modal (token never stored in source) ─────────────────
+  function SaveModal({ schemas, dataVersion, onClose, onSaved, onReload }) {
+    var [token, setToken] = useState(function(){ try{return sessionStorage.getItem('__gist_tok')||'';}catch(e){return '';} });
+    var [remember, setRemember] = useState(false);
+    var [phase, setPhase] = useState('form'); // form|checking|conflict|saving|saved|error
+    var [savedAt, setSavedAt] = useState('');
+    var [errMsg, setErrMsg] = useState('');
+    var [conflictTime, setConflictTime] = useState('');
+    var tokenRef = useRef(token);
+    tokenRef.current = token;
+
+    async function doSave(force) {
+      var tok = tokenRef.current.trim();
+      if (!tok) { setErrMsg('A GitHub token is required.'); return; }
+      setErrMsg('');
+      if (!force) {
+        setPhase('checking');
+        try {
+          var check = await gistCheckRevision(tok);
+          if (check.changed) { setConflictTime(check.updatedAt); setPhase('conflict'); return; }
+        } catch(e) { /* proceed */ }
+      }
+      setPhase('saving');
+      try {
+        var result = await gistSaveWithToken(schemas, tok, dataVersion);
+        try { if (remember) sessionStorage.setItem('__gist_tok', tok); else sessionStorage.removeItem('__gist_tok'); } catch(e){}
+        setSavedAt(result.updated_at || new Date().toISOString());
+        setPhase('saved');
+        if (onSaved) onSaved(result);
+      } catch(e) { setErrMsg(e.message); setPhase('error'); }
+    }
+
+    var INP = { fontFamily:T.mono, fontSize:13, padding:'8px 10px', border:'1px solid '+T.border1, borderRadius:5, color:T.textPrimary, outline:'none', width:'100%', boxSizing:'border-box' };
+    var SAVING = phase==='checking'||phase==='saving';
+
+    return (
+      <div style={{position:'fixed',inset:0,zIndex:400,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div onClick={onClose} style={{position:'absolute',inset:0,background:'rgba(15,23,42,0.5)'}}/>
+        <div style={{position:'relative',background:'#fff',borderRadius:12,width:520,maxWidth:'96vw',boxShadow:'0 24px 64px rgba(0,0,0,0.22)',overflow:'hidden'}}>
+          {/* Header */}
+          <div style={{padding:'18px 24px 14px',borderBottom:'1px solid '+T.border1,display:'flex',alignItems:'center',gap:12}}>
+            <div style={{width:36,height:36,borderRadius:8,background:T.blue25,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <span style={{fontSize:15,fontWeight:600,color:T.textPrimary,flex:1}}>Save to Gist</span>
+            <button onClick={onClose} style={{border:'none',background:'transparent',cursor:'pointer',fontSize:20,color:T.textMuted,lineHeight:1,padding:4}}>×</button>
+          </div>
+
+          {/* Body */}
+          <div style={{padding:'20px 24px'}}>
+            {phase==='conflict'?(
+              <div>
+                <div style={{padding:'12px 14px',background:'rgb(255,248,235)',border:'1px solid rgb(240,200,120)',borderRadius:6,marginBottom:16}}>
+                  <div style={{fontWeight:600,color:'rgb(133,79,11)',marginBottom:4}}>⚠ Conflict detected</div>
+                  <div style={{fontSize:13,color:T.textBody,lineHeight:1.5}}>The Gist was updated externally ({new Date(conflictTime).toLocaleString()}) since you loaded it. Your changes have not been saved.</div>
+                </div>
+                <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+                  <button onClick={onReload} style={{fontFamily:T.font,fontSize:13,padding:'7px 16px',border:'1px solid '+T.border1,borderRadius:4,background:'#fff',color:T.textPrimary,cursor:'pointer'}}>Reload latest</button>
+                  <button onClick={()=>doSave(true)} style={{fontFamily:T.font,fontSize:13,fontWeight:600,padding:'7px 16px',border:'none',borderRadius:4,background:'rgb(207,100,0)',color:'#fff',cursor:'pointer'}}>Overwrite anyway</button>
+                </div>
+              </div>
+            ):phase==='saved'?(
+              <div style={{textAlign:'center',padding:'12px 0 4px'}}>
+                <div style={{width:48,height:48,borderRadius:'50%',background:'rgb(235,255,240)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgb(22,110,52)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div style={{fontSize:15,fontWeight:600,color:'rgb(22,110,52)',marginBottom:4}}>Saved successfully</div>
+                <div style={{fontSize:12,color:T.textMuted}}>Gist updated at {new Date(savedAt).toLocaleString()}</div>
+              </div>
+            ):(
+              <div>
+                <div style={{fontSize:13,color:T.textBody,lineHeight:1.55,marginBottom:14}}>
+                  A GitHub token with <code style={{background:'rgb(240,242,246)',padding:'1px 5px',borderRadius:3,fontSize:12}}>gist</code> scope is required.{' '}
+                  <a href="https://github.com/settings/tokens/new?scopes=gist&description=API+Schema+Gist+Save" target="_blank" rel="noopener" style={{color:T.blue}}>Create one →</a>
+                </div>
+                <input type="password" value={token} onChange={function(e){setToken(e.target.value);}} placeholder="ghp_…" style={INP} autoFocus/>
+                <div style={{fontSize:11,color:T.textMuted,marginTop:7,lineHeight:1.5}}>Used only for this save. Kept in memory this session. <strong>Never stored in source or committed.</strong></div>
+                <label style={{display:'flex',alignItems:'center',gap:8,marginTop:12,fontSize:13,color:T.textBody,cursor:'pointer'}}>
+                  <input type="checkbox" checked={remember} onChange={function(e){setRemember(e.target.checked);}} style={{width:14,height:14,accentColor:T.blue}}/>
+                  Remember for this tab (sessionStorage only, cleared on tab close)
+                </label>
+                {errMsg&&<div style={{marginTop:12,fontSize:12,color:T.danger,background:T.dangerBg,padding:'7px 10px',borderRadius:4}}>{errMsg}</div>}
+                {phase==='error'&&!errMsg&&<div style={{marginTop:12,fontSize:12,color:T.danger,background:T.dangerBg,padding:'7px 10px',borderRadius:4}}>Save failed. Check your token and try again.</div>}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {phase!=='conflict'&&phase!=='saved'&&(
+            <div style={{padding:'12px 24px',borderTop:'1px solid '+T.border1,display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={onClose} style={{fontFamily:T.font,fontSize:13,padding:'7px 18px',border:'1px solid '+T.border1,borderRadius:4,background:'#fff',color:T.textMuted,cursor:'pointer'}}>Cancel</button>
+              <button onClick={()=>doSave(false)} disabled={SAVING}
+                style={{fontFamily:T.font,fontSize:13,fontWeight:600,padding:'7px 20px',border:'none',borderRadius:4,background:SAVING?'rgb(130,170,240)':T.blue,color:'#fff',cursor:SAVING?'default':'pointer',transition:'background 0.12s'}}>
+                {phase==='checking'?'Checking…':phase==='saving'?'Saving…':'Save to Gist'}
+              </button>
+            </div>
+          )}
+          {phase==='saved'&&(
+            <div style={{padding:'12px 24px',borderTop:'1px solid '+T.border1,display:'flex',justifyContent:'flex-end'}}>
+              <button onClick={onClose} style={{fontFamily:T.font,fontSize:13,fontWeight:600,padding:'7px 20px',border:'none',borderRadius:4,background:T.blue,color:'#fff',cursor:'pointer'}}>Done</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main ─────────────────────────────────────────────────────
+  function ApiSchemaViewer() {
+    const [syncStatus, setSyncStatus] = useState('idle');
+    const [schemas, setSchemas] = useState([{ id:'s1', name:INITIAL_DATA.type, data:INITIAL_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }, { id:'s2', name:'Commercial + Medicare', data:COMMERCIAL_MEDICARE_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }, { id:'s3', name:'Unified', data:UNIFIED_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }]);
+    const [activeIdx, setActiveIdx] = useState(0);
+    const [newSchemaOpen, setNewSchemaOpen] = useState(false);
+
+    const [data, setData] = useState(INITIAL_DATA);
+    // Sync active schema data when switching tabs
+    useEffect(function() {
+      const s = schemas[activeIdx]; if(!s) return;
+      setData(s.data||{}); setDescriptions(Object.assign({},BASE_DESCRIPTIONS,s.descriptions||{})); setDraft(null); setDraftDescs(null);
+    }, [activeIdx]);
+
+    // Always load from Gist on mount
+    useEffect(function() {
+      setSyncStatus('syncing');
+      gistLoad().then(function(bundle) {
+        if (bundle && bundle.__v2 && bundle.schemas && bundle.schemas.length) {
+          // If Gist data is from an older version, discard and use local data
+          if (bundle.__dataVersion !== DATA_VERSION) {
+            const local = [{ id:'s1', name:INITIAL_DATA.type, data:INITIAL_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }, { id:'s2', name:'Commercial + Medicare', data:COMMERCIAL_MEDICARE_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }, { id:'s3', name:'Unified', data:UNIFIED_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }];
+            setSchemas(local); setData(local[0].data||{}); setDescriptions(Object.assign({},BASE_DESCRIPTIONS));
+            gistSave(local, DATA_VERSION);
+            setSyncStatus('idle'); return;
+          }
+          var loaded = bundle.schemas;
+          var hasCommercial = loaded.some(function(s){ return s.id==='s2'||s.name==='Commercial + Medicare'; });
+          if (!hasCommercial) {
+            loaded = loaded.concat([{ id:'s2', name:'Commercial + Medicare', data:COMMERCIAL_MEDICARE_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }]);
+          }
+          var hasUnified = loaded.some(function(s){ return s.id==='s3'||s.name==='Unified'; });
+          if (!hasUnified) {
+            loaded = loaded.concat([{ id:'s3', name:'Unified', data:UNIFIED_DATA, descriptions:Object.assign({},BASE_DESCRIPTIONS) }]);
+          }
+          if (!hasCommercial || !hasUnified) gistSave(loaded, DATA_VERSION);
+          setSchemas(loaded);
+          const s0=loaded[0]; setData(s0.data||{}); setDescriptions(Object.assign({},BASE_DESCRIPTIONS,s0.descriptions||{}));
+          setSyncStatus('idle');
+        } else {
+          fetch('./api-schema-data.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){setData(d);}).catch(function(){});
+          setSyncStatus('idle');
+        }
+      }).catch(function(){ setSyncStatus('error'); });
+    }, []);
+    const [draft, setDraft] = useState(null);
+    const [descriptions, setDescriptions] = useState(Object.assign({}, BASE_DESCRIPTIONS));
+    const [draftDescs, setDraftDescs] = useState(null);
+    const [editMode, setEditMode] = useState(false);
+    const [viewMode, setViewMode] = useState('table');
+    const [forceOpen, setForceOpen] = useState(null);
+    const [treeKey, setTreeKey] = useState(0);
+    const [editingMeta, setEditingMeta] = useState(false);
+    const [metaDraft, setMetaDraft] = useState(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [pendingSaveSchemas, setPendingSaveSchemas] = useState(null);
+    const [activeTab, setActiveTab] = useState('schema');
+    const [payloadOpen, setPayloadOpen] = useState(false);
+    const [payloadWidth, setPayloadWidth] = useState(440);
+    const [schemaDropOpen, setSchemaDropOpen] = useState(false);
+    const [viewAsDropOpen, setViewAsDropOpen] = useState(false);
+    const [actionDropOpen, setActionDropOpen] = useState(false);
+    const isDraggingPayload = useRef(false);
+    const dragStartX = useRef(0);
+    const dragStartW = useRef(440);
+
+    const displayData = draft!==null?draft:data;
+    const displayDescs = draftDescs!==null?draftDescs:descriptions;
+    const hasDraft = draft!==null;
+    const meta = metaDraft||{source:displayData.source,eventId:displayData.id,time:displayData.time,specversion:displayData.specversion,typeName:displayData.type,schemaName:schemas[activeIdx]&&schemas[activeIdx].name||''};
+
+    function mutateDraft(fn){setDraft(prev=>fn(prev!==null?prev:data));}
+    function handleDelete(path){mutateDraft(d=>deleteNested(d,path));}
+    function handleAdd(path,key,value,desc){
+      mutateDraft(d=>addNested(d,path,key,value));
+      if(desc) setDraftDescs(prev=>Object.assign({},prev!==null?prev:descriptions,{[key]:desc}));
+    }
+    function handleSaveRow(path, oldKey, newKey, newValue, newDesc) {
+      mutateDraft(d => {
+        let updated = setNested(d, path, newValue);
+        if (newKey !== oldKey && !oldKey.startsWith('[')) updated = renameNested(updated, path, newKey);
+        return updated;
+      });
+      const descKey = newKey !== oldKey ? newKey : oldKey;
+      setDraftDescs(prev => Object.assign({}, prev!==null?prev:descriptions, {[descKey]: newDesc}));
+    }
+    function handleReorder(parentPath,fromIdx,toIdx){mutateDraft(d=>reorderSiblings(d,parentPath,fromIdx,toIdx));}
+    function handleSave(){
+      const nd=draft!==null?draft:data; const nds=draftDescs!==null?draftDescs:descriptions;
+      setData(nd); setDescriptions(nds); setDraft(null); setDraftDescs(null);
+      const updated = schemas.map((s,i)=>i===activeIdx?Object.assign({},s,{data:nd,descriptions:nds}):s);
+      setSchemas(updated);
+      triggerGistSave(updated);
+    }
+    function handleAddSchema(schema){
+      const updated=schemas.concat([schema]); setSchemas(updated); setActiveIdx(updated.length-1);
+      triggerGistSave(updated);
+    }
+    function handleDeleteSchema(idx){
+      if(schemas.length<=1||!window.confirm('Delete this schema?')) return;
+      const updated=schemas.filter((_,i)=>i!==idx); setSchemas(updated); setActiveIdx(Math.max(0,idx-1));
+      triggerGistSave(updated);
+    }
+    function triggerGistSave(schemasToSave) { setPendingSaveSchemas(schemasToSave); setShowSaveModal(true); }
+    function handleDiscard(){setDraft(null);setDraftDescs(null);}
+    function toggleEdit(){if(editMode&&hasDraft){if(!window.confirm('Discard unsaved changes?'))return;handleDiscard();}setEditMode(e=>!e);}
+    function saveMetaEdits(){
+      const newData = Object.assign({}, draft!==null?draft:data, {source:meta.source,id:meta.eventId,time:meta.time,specversion:meta.specversion,type:meta.typeName});
+      const newName = meta.schemaName||schemas[activeIdx].name;
+      const newDescs = draftDescs!==null?draftDescs:descriptions;
+      setData(newData); setDescriptions(newDescs); setDraft(null); setDraftDescs(null);
+      setEditingMeta(false); setMetaDraft(null);
+      const updatedSchemas = schemas.map((s,i)=>i===activeIdx?Object.assign({},s,{name:newName,data:newData,descriptions:newDescs}):s);
+      setSchemas(updatedSchemas);
+      triggerGistSave(updatedSchemas);
+    }
+    function cancelMetaEdit(){setEditingMeta(false);setMetaDraft(null);}
+
+    const IC_DL=<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+    const IC_SAVE=<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
+    const ICEDIT=<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+
+    const NAVY = 'rgb(28,45,66)';
+    const IC_CHEVDN=<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>;
+    const IC_CHEVDN_W=<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>;
+
+    function handlePayloadDividerMouseDown(e) {
+      e.preventDefault();
+      isDraggingPayload.current = true;
+      dragStartX.current = e.clientX;
+      dragStartW.current = payloadWidth;
+      function onMove(ev) {
+        if(!isDraggingPayload.current) return;
+        var delta = dragStartX.current - ev.clientX;
+        var newW = Math.min(Math.max(dragStartW.current + delta, 280), window.innerWidth * 0.85);
+        setPayloadWidth(newW);
+      }
+      function onUp() { isDraggingPayload.current=false; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    function DropBtn({label, icon, onClick, active, white, filled}) {
+      var [hov,setHov]=useState(false);
+      var bg = filled?(hov?'rgb(18,36,56)':NAVY):white?(hov||active?'rgba(255,255,255,0.18)':'transparent'):(hov||active?T.blue25:'#fff');
+      var fg = filled?'#fff':white?'#fff':(active?T.blue:T.textPrimary);
+      var bd = filled?'transparent':white?'rgba(255,255,255,0.3)':(active?T.blue:'rgb(210,214,220)');
+      return <button onClick={onClick} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+        style={{display:'flex',alignItems:'center',gap:6,padding:'5px 12px',border:'1px solid '+bd,borderRadius:5,background:bg,color:fg,fontFamily:T.font,fontSize:12,fontWeight:filled?600:500,cursor:'pointer',whiteSpace:'nowrap',transition:'all 0.12s',flexShrink:0}}>
+        {icon}{label}{!filled&&IC_CHEVDN}
+      </button>;
+    }
+
+    function DropMenu({items, style}) {
+      return (
+        <div style={Object.assign({position:'absolute',top:'calc(100% + 6px)',background:'#fff',border:'1px solid '+T.border1,borderRadius:7,boxShadow:'0 10px 32px rgba(0,0,0,0.14)',minWidth:210,zIndex:300,overflow:'hidden'},style||{})}>
+          {items.map(function(item,i){
+            if(item.section) return <div key={i} style={{padding:'8px 14px 4px',fontSize:10,fontWeight:700,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.08em'}}>{item.section}</div>;
+            if(item.divider) return <div key={i} style={{height:1,background:T.border1,margin:'3px 0'}}/>;
+            return <div key={i} onClick={item.onClick}
+              style={{display:'flex',alignItems:'center',gap:8,padding:'9px 14px',cursor:item.disabled?'default':'pointer',color:item.danger?T.danger:item.disabled?T.border1:T.textPrimary,fontSize:13,fontWeight:item.bold?600:400,opacity:item.disabled?0.4:1}}
+              onMouseEnter={function(e){if(!item.disabled)e.currentTarget.style.background=item.danger?T.dangerBg:T.blue25;}}
+              onMouseLeave={function(e){e.currentTarget.style.background='transparent';}}>
+              {item.icon&&<span style={{flexShrink:0}}>{item.icon}</span>}{item.label}
+            </div>;
+          })}
+        </div>
+      );
+    }
+
+    var schemaItems = schemas.map(function(s,i){return{label:s.name||s.id,bold:i===activeIdx,icon:i===activeIdx?<svg width="8" height="8" viewBox="0 0 24 24" fill={T.blue}><circle cx="12" cy="12" r="10"/></svg>:<span style={{width:8,display:'inline-block'}}/>,onClick:function(){setActiveIdx(i);setSchemaDropOpen(false);}};});
+    var schemaMenuItems = [{section:'Eligibility'}].concat(schemaItems).concat([{divider:true},{label:'+ Add New Schema',icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,onClick:function(){setSchemaDropOpen(false);setNewSchemaOpen(true);}}]);
+
+    return (
+      <div style={{display:'flex',flexDirection:'column',height:'100vh',fontFamily:T.font,color:T.textPrimary,overflow:'hidden'}}
+        onClick={()=>{schemaDropOpen&&setSchemaDropOpen(false);viewAsDropOpen&&setViewAsDropOpen(false);actionDropOpen&&setActionDropOpen(false);}}>
+
+        {/* ── TIER 1 — Navy tab bar ── */}
+        <div style={{height:48,background:NAVY,display:'flex',alignItems:'stretch',padding:'0 16px',flexShrink:0}}>
+          {/* Wordmark */}
+          <div style={{display:'flex',alignItems:'center',gap:6,marginRight:16,flexShrink:0}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="#A84309"/><rect x="13" y="3" width="8" height="8" rx="1.5" fill="#E45808"/><rect x="3" y="13" width="8" height="8" rx="1.5" fill="#CA5E20"/><rect x="13" y="13" width="8" height="8" rx="1.5" fill="#E45808"/></svg>
+            <span style={{fontWeight:700,fontSize:13,color:'#fff',letterSpacing:'-0.01em',whiteSpace:'nowrap'}}><span style={{color:'#E45808'}}>API Schema</span></span>
+          </div>
+          
+
+          {/* Tab: API Schema (dropdown) */}
+          <div style={{position:'relative',display:'flex',alignItems:'stretch'}} onClick={function(e){e.stopPropagation();}}>
+            <button onClick={()=>{setActiveTab('schema');setSchemaDropOpen(function(o){return !o;});}}
+              style={{display:'flex',alignItems:'center',gap:6,padding:'0 14px',border:'none',background:'transparent',color:activeTab==='schema'?'#fff':'rgba(255,255,255,0.5)',cursor:'pointer',fontFamily:T.font,fontSize:13,fontWeight:500,borderBottom:'2px solid transparent',transition:'all 0.12s',whiteSpace:'nowrap'}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              API Schema {IC_CHEVDN_W}
+            </button>
+            {schemaDropOpen&&activeTab==='schema'&&<DropMenu items={schemaMenuItems} style={{left:0,minWidth:230}}/>}
+          </div>
+
+          {/* Tab: Compare */}
+          <button onClick={()=>{setActiveTab('compare');setSchemaDropOpen(false);}}
+            style={{display:'flex',alignItems:'center',gap:5,padding:'0 14px',border:'none',background:'transparent',color:activeTab==='compare'?'#fff':'rgba(255,255,255,0.5)',cursor:'pointer',fontFamily:T.font,fontSize:13,fontWeight:500,borderBottom:'2px solid transparent',transition:'all 0.12s',whiteSpace:'nowrap'}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="8" y2="6"/><line x1="16" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="8" y2="18"/><line x1="16" y1="18" x2="21" y2="18"/></svg>
+            Compare
+          </button>
+
+          <div style={{flex:1}}/>
+          {syncStatus==='syncing'&&<span style={{fontSize:11,color:'rgba(255,255,255,0.6)',flexShrink:0,alignSelf:'center'}}>Syncing…</span>}
+          {syncStatus==='ok'&&<span style={{fontSize:11,color:'rgb(100,220,140)',flexShrink:0,alignSelf:'center'}}>✓ Saved</span>}
+          {syncStatus==='error'&&<span style={{fontSize:11,color:'rgb(255,120,120)',flexShrink:0,alignSelf:'center'}}>⚠ Sync failed</span>}
+        </div>
+
+        {/* ── TIER 2 — White bar with shadow ── */}
+        {activeTab==='schema'&&(
+          <div style={{height:54,background:'#fff',borderBottom:'1px solid '+T.border1,boxShadow:'0 2px 10px rgba(0,0,0,0.08)',display:'flex',alignItems:'center',padding:'0 20px',gap:10,flexShrink:0,zIndex:20}}>
+            {editingMeta?(
+              <input value={meta.schemaName} onChange={function(e){setMetaDraft(function(m){return Object.assign({},m,{schemaName:e.target.value});});}}
+                placeholder="Schema name" style={{fontFamily:T.mono,fontSize:15,fontWeight:700,padding:'4px 8px',border:'1px solid '+T.blue,borderRadius:4,color:T.textPrimary,outline:'none',width:220}}/>
+            ):(
+              <span style={{fontFamily:T.mono,fontSize:15,fontWeight:700,color:T.textPrimary,maxWidth:300,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{schemas[activeIdx]&&schemas[activeIdx].name}</span>
+            )}
+            <div style={{flex:1}}/>
+            {editMode&&(
+              <>
+                {hasDraft&&<span style={{fontSize:11,color:'rgb(133,79,11)',background:'rgb(250,238,218)',padding:'2px 8px',borderRadius:10,fontWeight:500,whiteSpace:'nowrap'}}>Unsaved</span>}
+                <Btn onClick={handleSave} disabled={!hasDraft}>{IC_SAVE} Save</Btn>
+                <Btn danger onClick={handleDiscard} disabled={!hasDraft}>Discard</Btn>
+                <Btn active onClick={toggleEdit}>{ICEDIT} Done editing</Btn>
+              </>
+            )}
+            {editingMeta&&!editMode&&(
+              <>
+                <Btn onClick={saveMetaEdits}>Apply</Btn>
+                <button onClick={cancelMetaEdit} style={{fontFamily:T.font,fontSize:12,padding:'5px 10px',border:'1px solid '+T.border1,borderRadius:4,background:'#fff',color:T.textMuted,cursor:'pointer'}}>Cancel</button>
+              </>
+            )}
+            {!editMode&&(
+              <>
+                {/* View as dropdown */}
+                <div style={{position:'relative'}} onClick={function(e){e.stopPropagation();}}>
+                  <DropBtn label={'View: '+(viewMode==='tree'?'Tree':'Table')} active={viewAsDropOpen}
+                    icon={viewMode==='tree'?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l4-4 4 4"/><path d="M7 5v14"/><rect x="13" y="5" width="8" height="4" rx="1"/><rect x="13" y="13" width="8" height="4" rx="1"/></svg>:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>}
+                    onClick={()=>setViewAsDropOpen(function(o){return !o;})}/>
+                  {viewAsDropOpen&&<DropMenu style={{right:0}} items={[
+                    {label:'Tree',icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l4-4 4 4"/><path d="M7 5v14"/><rect x="13" y="5" width="8" height="4" rx="1"/><rect x="13" y="13" width="8" height="4" rx="1"/></svg>,bold:viewMode==='tree',onClick:function(){setViewMode('tree');setViewAsDropOpen(false);}},
+                    {label:'Table',icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>,bold:viewMode==='table',onClick:function(){setViewMode('table');setViewAsDropOpen(false);}},
+                  ]}/>}
+                </div>
+                {/* View Payload (filled navy button) */}
+                <button onClick={()=>setPayloadOpen(function(o){return !o;})}
+                  style={{display:'flex',alignItems:'center',gap:6,padding:'5px 13px',border:'none',borderRadius:5,background:payloadOpen?'rgb(18,36,56)':NAVY,color:'#fff',fontFamily:T.font,fontSize:12,fontWeight:600,cursor:'pointer',transition:'all 0.12s',flexShrink:0}}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  {payloadOpen?'Close Payload':'View Payload'}
+                </button>
+                {/* Action dropdown */}
+                <div style={{position:'relative'}} onClick={function(e){e.stopPropagation();}}>
+                  <DropBtn label="Action" active={actionDropOpen}
+                    icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>}
+                    onClick={()=>setActionDropOpen(function(o){return !o;})}/>
+                  {actionDropOpen&&<DropMenu style={{right:0}} items={[
+                    {label:'Edit Meta',icon:ICEDIT,onClick:function(){setActionDropOpen(false);setMetaDraft({source:displayData.source,eventId:displayData.id,time:displayData.time,specversion:displayData.specversion,typeName:displayData.type,schemaName:schemas[activeIdx]&&schemas[activeIdx].name||''});setEditingMeta(true);}},
+                    {label:'Edit JSON',icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,onClick:function(){setActionDropOpen(false);toggleEdit();}},
+                    {divider:true},
+                    {label:'Download JSON',icon:IC_DL,onClick:function(){setActionDropOpen(false);downloadJSON(displayData,schemas[activeIdx]&&schemas[activeIdx].name);}},
+                    {label:'Download CSV',icon:IC_DL,onClick:function(){setActionDropOpen(false);downloadCSV(displayData,displayDescs,schemas[activeIdx]&&schemas[activeIdx].name);}},
+                    {divider:true},
+                    {label:'Delete Schema',danger:true,disabled:schemas.length<=1,icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>,onClick:function(){if(schemas.length>1){setActionDropOpen(false);setShowDeleteConfirm(true);}}},
+                  ]}/>}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Edit meta strip */}
+        {editingMeta&&activeTab==='schema'&&(
+          <div style={{background:'rgb(248,250,253)',borderBottom:'1px solid '+T.border1,padding:'10px 24px',display:'flex',gap:20,alignItems:'center',flexShrink:0,flexWrap:'wrap'}}>
+            {[['Event type','typeName',true],['Source','source',false],['Event ID','eventId',false],['Spec version','specversion',false]].map(function([lbl,key,wide]){return(
+              <div key={key} style={{display:'flex',flexDirection:'column',gap:3}}>
+                <span style={{fontSize:10,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:500}}>{lbl}</span>
+                <input value={meta[key]||''} onChange={function(e){var v=e.target.value;setMetaDraft(function(m){var u=Object.assign({},m);u[key]=v;return u;});}}
+                  style={{fontFamily:T.mono,fontSize:12,padding:'4px 8px',border:'1px solid '+T.border1,borderRadius:4,color:T.textPrimary,outline:'none',width:wide?300:160}}/>
+              </div>
+            );})}
+          </div>
+        )}
+
+        {/* ── BODY ── */}
+        {activeTab==='compare'?(
+          <CompareScreen schemas={schemas}/>
+        ):(
+          <div style={{flex:1,display:'flex',overflow:'hidden',minHeight:0,position:'relative'}}>
+            {/* Schema content */}
+            <div style={{flex:1,overflowY:'auto',minWidth:0,padding:'16px 20px'}}>
+              {editMode&&!hasDraft&&(
+                <div style={{fontSize:11,color:T.textMuted,marginBottom:10,display:'flex',alignItems:'center',gap:5}}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Pencil to edit · + to add · trash to delete · drag to reorder
+                </div>
+              )}
+              <div style={{background:T.surface,border:'1px solid '+T.border1,borderRadius:10,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+                {viewMode==='tree'?(
+                  <div style={{padding:'6px 16px'}} key={treeKey}>
+                    {Object.entries(displayData).map(function([k,v],i){return(
+                      <TreeNode key={k} fieldKey={k} value={v} path={[k]} depth={0}
+                        editMode={editMode} onDelete={handleDelete} onAdd={handleAdd} onSaveRow={handleSaveRow} onReorder={handleReorder}
+                        siblingIndex={i} descriptions={displayDescs} forceOpen={forceOpen}/>
+                    );})}
+                  </div>
+                ):(
+                  <TableView data={displayData} descriptions={displayDescs} editMode={editMode} onDelete={handleDelete} onAdd={handleAdd} onSaveRow={handleSaveRow} onReorder={handleReorder}/>
+                )}
+              </div>
+            </div>
+            {/* Payload panel — absolutely positioned, overlaps table, resizable */}
+            {payloadOpen&&(
+              <div style={{position:'absolute',top:0,right:0,bottom:0,width:payloadWidth+'px',background:'#fff',borderLeft:'1px solid '+T.border1,boxShadow:'-6px 0 24px rgba(0,0,0,0.10)',display:'flex',flexDirection:'column',zIndex:15}}>
+                {/* Drag handle */}
+                <div onMouseDown={handlePayloadDividerMouseDown}
+                  style={{position:'absolute',left:-4,top:0,bottom:0,width:9,cursor:'col-resize',zIndex:20,background:'transparent'}}/>
+                {/* Panel header */}
+                <div style={{padding:'10px 16px',borderBottom:'1px solid '+T.border1,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                  <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Payload</span>
+                  <div style={{flex:1}}/>
+                  <button onClick={()=>setPayloadOpen(false)} style={{border:'none',background:'transparent',cursor:'pointer',color:T.textMuted,fontSize:18,lineHeight:1,padding:'2px 6px',borderRadius:3}} onMouseEnter={function(e){e.currentTarget.style.background='rgb(243,244,246)';}} onMouseLeave={function(e){e.currentTarget.style.background='transparent';}}>×</button>
+                </div>
+                <div style={{flex:1,overflowY:'auto',padding:16}}><PayloadPreview/></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODALS */}
+        {showSaveModal&&pendingSaveSchemas&&<SaveModal schemas={pendingSaveSchemas} dataVersion={DATA_VERSION} onClose={()=>setShowSaveModal(false)} onSaved={function(){setSyncStatus('ok');setTimeout(function(){setSyncStatus('idle');},4000);setShowSaveModal(false);}} onReload={function(){setShowSaveModal(false);window.location.reload();}}/>}
+        {showDeleteConfirm&&<DeleteConfirmModal schemaName={schemas[activeIdx]&&schemas[activeIdx].name} onCancel={()=>setShowDeleteConfirm(false)} onConfirm={()=>{setShowDeleteConfirm(false);handleDeleteSchema(activeIdx);}}/>}
+        {newSchemaOpen && <NewSchemaModal onClose={()=>setNewSchemaOpen(false)} onCreate={handleAddSchema} />}
+      </div>
+    );
+  }
+
+  window.ApiSchemaViewer = ApiSchemaViewer;
+})();
+</script>
+<script type="text/babel">
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(React.createElement(window.ApiSchemaViewer));
+</script>
+</body>
+</html>

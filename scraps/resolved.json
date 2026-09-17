@@ -1,0 +1,138 @@
+[
+ {
+  "A": "#",
+  "B": "Task ID",
+  "C": "Subtask Name",
+  "D": "Status",
+  "E": "Description",
+  "F": "URL"
+ },
+ {
+  "A": "Task ID",
+  "B": "86d3qd3jv",
+  "C": "Alert name: On service with another home health/hospice",
+  "D": "to do",
+  "E": "User Story\nAs an Intake Coordinator or RCM Billing Specialist\nI want the application to clearly flag patients who are currently \"On Service\" with another Home Health or Hospice agency and display the relevant episode details\nSo that I can prevent duplicate billing, avoid Medicare/payer claim denials due to overlapping care episodes, and initiate necessary transfer or discharge workflows before completing intake\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"On service with another home health/hospice\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n1. A message to provide insight on the impact of this alert. (Beneficiary appears currently on service with another Home health or Hospice agency. Verify discharge/transfer status before admitting or billing)\n2. Then, the list of information as follows:\n   - Service type\n   - Time period\n   - Date\n   - Provider ID\n   - Message",
+  "F": "https://app.clickup.com/t/86d3qd3jv"
+ },
+ {
+  "A": "Subtask Name",
+  "B": "86d3qd3md",
+  "C": "Alert name: Medicare Secondary",
+  "D": "to do",
+  "E": "User Story\nAs an Intake Specialist or RCM Billing Coordinator\nI want the application to display a clear \"Medicare Secondary Payer\" alert and expose primary insurance details when Medicare is identified as secondary\nSo that we can bill the correct primary payer first, prevent Medicare primary claim rejections, and avoid compliance audits or post-payment demand letters.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Medicare Secondary\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n1. Payor type\n2. Payor name\n3. Address\n4. Policy number\n5. Phone number\n6. Adjustor's name and phone number\n7. Date of accident/ Injury (DOA/DOI)\n8. Claim number\n9. Message",
+  "F": "https://app.clickup.com/t/86d3qd3md"
+ },
+ {
+  "A": "Status",
+  "B": "86d3qd3w7",
+  "C": "Alert name: Medicare Replacement",
+  "D": "to do",
+  "E": "User Story Statement\nAs an Intake Coordinator or RCM Billing Specialist\nI want the application to display a \"Medicare Replacement\" alert and surface the specific Medicare Advantage plan details when a patient is covered under a managed care plan instead of Original Medicare\nSo that we can route claims/billing to the correct commercial payer, and avoid immediate Notice of Admission (NOA) and claim rejections from Traditional Medicare Part A\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Medicare replacement\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n1. Service type\n2. Payor type\n3. Effective Date\n4. Address\n5. Policy number\n6. Phone number\n7. Message",
+  "F": "https://app.clickup.com/t/86d3qd3w7"
+ },
+ {
+  "A": "Description",
+  "B": "86d3qd3y4",
+  "C": "Alert name: Medicare A or B Inactive",
+  "D": "to do",
+  "E": "User Story\nAs an Intake Coordinator or RCM Billing Specialist\nI want the application to display a prominent \"Medicare A or B Inactive\" alert and detail which coverage is inactive alongside termination dates\nSo that we can identify alternative active coverage (such as a Medicare Advantage plan), and avoid rendering uncompensated home health care.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Medicare A or B inactive\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Service Type\n- Date",
+  "F": "https://app.clickup.com/t/86d3qd3y4"
+ },
+ {
+  "A": "URL",
+  "B": "86d3qd3zk",
+  "C": "Alert name: Eligibility check has identified a change for the MBI",
+  "D": "to do",
+  "E": "User Story\nAs a User\nI want the application to flag patients whose MBI has changed and display both the submitted and newly issued MBI details\nSo that I can update the patient's record in our EHR prior to billing, preventing claim rejections and administrative rework\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Eligibility check has identified a change for the MBI\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- New MBI\n- Existing MBI\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd3zk"
+ },
+ {
+  "A": "86d3qd3jv",
+  "B": "86d3qd40q",
+  "C": "Alert name: Invalid/Missing Subscriber/Insured ID",
+  "D": "to do",
+  "E": "User Story\nAs a User\nI want the application to flag patient records with an \"Invalid/Missing Subscriber/Insured ID\" alert and display the submitted policy details\nSo that I can promptly correct demographic or insurance ID errors before submitting claims or scheduling home health care visits\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Invalid/Missing Subscriber/Insured ID\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Subscriber ID\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd40q"
+ },
+ {
+  "A": "Alert name: On service with another home health/hospice",
+  "B": "86d3qd41q",
+  "C": "Alert name: Invalid/Missing Subscriber/Insured Name",
+  "D": "to do",
+  "E": "User Story\nAs a user\nI want the application to flag patient records with an \"Invalid/Missing Subscriber/Insured Name\" alert and display the submitted demographic details\nSo that I can correct typos, legal name mismatches, or missing middle initials in our EHR before scheduling care or submitting billing transactions.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Invalid/Missing Subscriber/Insured Name\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Subscriber name\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd41q"
+ },
+ {
+  "A": "to do",
+  "B": "86d3qd42j",
+  "C": "Alert name: Client Demographics",
+  "D": "to do",
+  "E": "User Story\nAs a user\nI want the application to display a \"Client Demographics\" alert and highlight specific mismatched fields (such as DOB, Gender, or Address)\nSo that I can reconcile patient records in our EHR prior to care delivery and avoid claim rejections due to demographic discrepancies.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Client Demographics\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Subscriber name\n- Subscriber DOB\n- Subscriber address\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd42j"
+ },
+ {
+  "A": "User Story\nAs an Intake Coordinator or RCM Billing Specialist\nI want the application to clearly flag patients who are currently \"On Service\" with another Home Health or Hospice agency and display the relevant episode details\nSo that I can prevent duplicate billing, avoid Medicare/payer claim denials due to overlapping care episodes, and initiate necessary transfer or discharge workflows before completing intake\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"On service with another home health/hospice\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n1. A message to provide insight on the impact of this alert. (Beneficiary appears currently on service with another Home health or Hospice agency. Verify discharge/transfer status before admitting or billing)\n2. Then, the list of information as follows:\n   - Service type\n   - Time period\n   - Date\n   - Provider ID\n   - Message",
+  "B": "86d3qd43v",
+  "C": "Alert name: Invalid/Missing Provider Identification",
+  "D": "to do",
+  "E": "User Story\nAs a user\nI want the application to display a \"Invalid/Missing Provider Identification\" alert and highlight specific mismatched fields (such as DOB, Gender, or Address)\nSo that I can reconcile patient records in our EHR prior to care delivery and avoid claim rejections due to demographic discrepancies.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Invalid/Missing Provider Identifications\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Provider ID\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd43v"
+ },
+ {
+  "A": "https://app.clickup.com/t/86d3qd3jv",
+  "B": "86d3qd44w",
+  "C": "Alert name: Provider Not on File",
+  "D": "to do",
+  "E": "User Story\nAs a User\nI want the application to display a \"Provider Not on File\" alert\nSo that I can verify our agency's credentialing status with the payer, update the billing NPI in our EHR if needed, and prevent NOA or claim rejections before starting patient care.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Provider Not on File\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Provider ID\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd44w"
+ },
+ {
+  "A": "86d3qd3md",
+  "B": "86d3qd46k",
+  "C": "Alert name: Future Eligibility Date",
+  "D": "to do",
+  "E": "User Story\nAs an Intake User\nI want the application to display a \"Future Eligibility Date\" alert and expose the future effective dates\nSo that I can align the patient's Start of Care (SOC) date with active coverage or bill the correct current primary payer until the future policy takes effect.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Future Eligibility Date\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Eligible date\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd46k"
+ },
+ {
+  "A": "Alert name: Medicare Secondary",
+  "B": "86d3qd484",
+  "C": "Alert name: Subscriber/Insured Not Found",
+  "D": "to do",
+  "E": "User Story\nAs a user\nI want the application to flag patient records with a \"Subscriber/Insured Not Found\" alert\nSo that I can correct demographic or policy ID errors, request updated insurance cards from the patient, or verify Medicare Advantage replacement coverage prior to scheduling care and submitting the Notice of Admission (NOA).\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Subscriber/Insured Not Found\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Subscriber name\n- Subscriber ID\n- Subscriber DOB\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd484"
+ },
+ {
+  "A": "User Story\nAs an Intake Specialist or RCM Billing Coordinator\nI want the application to display a clear \"Medicare Secondary Payer\" alert and expose primary insurance details when Medicare is identified as secondary\nSo that we can bill the correct primary payer first, prevent Medicare primary claim rejections, and avoid compliance audits or post-payment demand letters.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Medicare Secondary\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n1. Payor type\n2. Payor name\n3. Address\n4. Policy number\n5. Phone number\n6. Adjustor's name and phone number\n7. Date of accident/ Injury (DOA/DOI)\n8. Claim number\n9. Message",
+  "B": "86d3qd49y",
+  "C": "Alert name: Patient Birth Date Does Not Match That for the Patient on the Database",
+  "D": "to do",
+  "E": "User Story\nAs a User\nI want the application to display a \"Patient Birth Date Mismatch\" alert and show the submitted DOB\nSo that I can correct the patient's birth date in our EHR, re-verify coverage, and ensure timely Notice of Admission (NOA) submission\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Patient Birth Date Does Not Match That for the Patient on the Database\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Submitted patient DOB\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd49y"
+ },
+ {
+  "A": "https://app.clickup.com/t/86d3qd3md",
+  "B": "86d3qd4bz",
+  "C": "Alert name: Invalid Participant Identification",
+  "D": "to do",
+  "E": "User Story\nAs a User\nI want the application to flag records with an \"Invalid Participant Identification\" alert and display the submitted entity identifiers alongside raw error details\nSo that I can resolve clearinghouse routing, trading partner ID, or payer mapping discrepancies to re-verify eligibility and avoid Notice of Admission (NOA) filing delays\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Invalid Participant Identification\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- Participant ID\nIf no data is available to display, we can display blanks",
+  "F": "https://app.clickup.com/t/86d3qd4bz"
+ },
+ {
+  "A": "86d3qd3w7",
+  "B": "86d3qd4cf",
+  "C": "Alert name: Unable to Respond at Current Time",
+  "D": "to do",
+  "E": "User Story\nAs a User\nI want the application to display an \"Unable to Respond at Current Time\" alert, log the temporary outage details\nSo that transient payer portal or clearinghouse downtimes are handled automatically without delaying patient care or requiring manual intervention.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Unable to Respond at Current Time\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- No data available to display",
+  "F": "https://app.clickup.com/t/86d3qd4cf"
+ },
+ {
+  "A": "Alert name: Medicare Replacement",
+  "B": "86d3qd4d0",
+  "C": "Alert name: Unable to respond/ other error",
+  "D": "to do",
+  "E": "User Story\nAs a User\nI want the application to display an \"Unable to respond/ other error\" alert, log the temporary outage details\nSo that transient payer portal or clearinghouse downtimes are handled automatically without delaying patient care or requiring manual intervention.\n\nPre-requisites\n1. The Patient Details screen must display an alert titled \"Unable to respond/ other error\" within the Eligibility Alerts section.\n2. In the Eligibility Alerts table/section, the Description column for this alert must include an active, clickable \"View details\" hyperlink.\n\nAcceptance criteria\nOn clicking the \"View details\" hyperlink, it should expand the \"Alert details\" section. The \"Alert details\" section should contain the following details:\n- No data available to display",
+  "F": "https://app.clickup.com/t/86d3qd4d0"
+ }
+]

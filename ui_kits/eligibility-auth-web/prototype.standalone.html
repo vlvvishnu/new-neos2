@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>WellSky — Eligibility &amp; Auth Prototype</title>
+<link rel="stylesheet" href="../../colors_and_type.css" />
+
+<!-- Resources referenced as strings in JSX (bundler can't auto-discover these) -->
+<meta name="ext-resource-dependency" content="../../assets/neos-logo.png" data-resource-id="neosLogo" />
+<meta name="ext-resource-dependency" content="../../assets/wellsky-logo-white.svg" data-resource-id="wellskyLogo" />
+<meta name="ext-resource-dependency" content="icons/at-completed.png" data-resource-id="atCompleted" />
+<meta name="ext-resource-dependency" content="icons/at-needs-attention.png" data-resource-id="atNeedsAttention" />
+<meta name="ext-resource-dependency" content="icons/at-in-progress.png" data-resource-id="atInProgress" />
+<meta name="ext-resource-dependency" content="icons/automated.png" data-resource-id="automated" />
+<meta name="ext-resource-dependency" content="icons/mdi-user.png" data-resource-id="mdiUser" />
+<meta name="ext-resource-dependency" content="icons/member-id-card.png" data-resource-id="memberIdCard" />
+<meta name="ext-resource-dependency" content="icons/payor-eligibility-response.png" data-resource-id="payorEligibilityResponse" />
+<meta name="ext-resource-dependency" content="icons/search.svg" data-resource-id="searchIcon" />
+<meta name="ext-resource-dependency" content="icons/filter.svg" data-resource-id="filterIcon" />
+
+<style>
+html,body{margin:0;padding:0;background:#fff;font-family:"Roboto",system-ui,sans-serif}
+*{box-sizing:border-box}
+button{font-family:inherit}
+</style>
+
+<template id="__bundler_thumbnail" data-bg-color="#1c2d42">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#1c2d42"/>
+    <rect x="0" y="0" width="1200" height="150" fill="#2c3c50"/>
+    <rect x="360" y="300" width="480" height="72" rx="10" fill="#ffffff" opacity="0.92"/>
+    <circle cx="600" cy="230" r="52" fill="#2563eb"/>
+    <path d="M578 232 l16 16 l30 -34" stroke="#ffffff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="360" y="420" width="300" height="20" rx="6" fill="#ffffff" opacity="0.35"/>
+    <rect x="360" y="460" width="420" height="20" rx="6" fill="#ffffff" opacity="0.25"/>
+  </svg>
+</template>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Map string-referenced asset paths to inlined blob URLs (window.__resources) -->
+<script>
+(function(){
+  function pathMap(){
+    return {
+      "assets/neos-logo.png": "neosLogo",
+      "assets/wellsky-logo-white.svg": "wellskyLogo",
+      "icons/at-completed.png": "atCompleted",
+      "icons/at-needs-attention.png": "atNeedsAttention",
+      "icons/at-in-progress.png": "atInProgress",
+      "icons/automated.png": "automated",
+      "icons/mdi-user.png": "mdiUser",
+      "icons/member-id-card.png": "memberIdCard",
+      "icons/payor-eligibility-response.png": "payorEligibilityResponse",
+      "icons/search.svg": "searchIcon",
+      "icons/filter.svg": "filterIcon"
+    };
+  }
+  function resolve(src){
+    if(!src || src.indexOf("blob:")===0 || src.indexOf("data:")===0) return null;
+    var res = (window.__resources||{});
+    var m = pathMap();
+    for(var k in m){
+      if(src.indexOf(k) !== -1){
+        var id = m[k];
+        if(res[id]) return res[id];
+      }
+    }
+    return null;
+  }
+  // Intercept the img `src` setter so a known path is rewritten to its inlined
+  // blob BEFORE the browser fetches it — prevents the transient 404s that would
+  // otherwise be caught and shown by the bundler's error overlay.
+  try {
+    var proto = window.HTMLImageElement && HTMLImageElement.prototype;
+    var desc = proto && Object.getOwnPropertyDescriptor(proto, "src");
+    if(desc && desc.set){
+      Object.defineProperty(proto, "src", {
+        configurable:true, enumerable: desc.enumerable,
+        get: function(){ return desc.get.call(this); },
+        set: function(v){ var b = resolve(v); desc.set.call(this, b || v); }
+      });
+    }
+    var setAttr = proto && proto.setAttribute;
+    if(setAttr){
+      proto.setAttribute = function(name, value){
+        if(name === "src"){ var b = resolve(value); return setAttr.call(this, name, b || value); }
+        return setAttr.call(this, name, value);
+      };
+    }
+  } catch(e){}
+  function patch(root){
+    var imgs = (root||document).querySelectorAll ? (root||document).querySelectorAll("img") : [];
+    imgs.forEach(function(img){
+      var b = resolve(img.getAttribute("src"));
+      if(b && img.getAttribute("src") !== b) img.src = b;
+    });
+  }
+  window.__patchResourceImgs = patch;
+  document.addEventListener("DOMContentLoaded", function(){
+    patch(document);
+    var mo = new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){
+        var mu = muts[i];
+        if(mu.type==="attributes" && mu.target && mu.target.tagName==="IMG"){
+          var b = resolve(mu.target.getAttribute("src"));
+          if(b && mu.target.getAttribute("src") !== b) mu.target.src = b;
+        } else if(mu.addedNodes){
+          mu.addedNodes.forEach(function(n){ if(n.nodeType===1) patch(n); });
+        }
+      }
+    });
+    mo.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["src"]});
+  });
+})();
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="eligibility-detail.jsx"></script>
+<script type="text/babel" src="eligibility-info-v2.jsx"></script>
+<script type="text/babel" src="eligibility-request-view.jsx"></script>
+<script type="text/babel" src="dashboard-view.jsx"></script>
+<script type="text/babel" src="erv-automation-log.jsx"></script>
+<script type="text/babel" src="arv-automation-log.jsx"></script>
+<script type="text/babel" src="prototype.jsx"></script>
+<script type="text/babel">
+ReactDOM.createRoot(document.getElementById("root")).render(<Prototype />);
+setTimeout(function(){ if(window.__patchResourceImgs) window.__patchResourceImgs(document); }, 400);
+</script>
+</body>
+</html>

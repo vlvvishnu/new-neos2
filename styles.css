@@ -1,0 +1,3 @@
+/* WellSky Eligibility & Auth — design-system root stylesheet.
+   Single entry point for consumers: pulls in tokens, fonts and type. */
+@import "./colors_and_type.css";

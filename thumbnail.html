@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>WellSky Eligibility &amp; Auth</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1280px;height:854px;overflow:hidden;display:flex}
+.main{flex:1;background:rgb(28,45,66);display:flex;align-items:center;justify-content:center}
+.brand{font-family:"Roboto",sans-serif;font-weight:500;font-size:48px;color:#fff;letter-spacing:-0.5px;text-align:center;line-height:1.2;padding:0 40px}
+.swatches{width:72px;display:flex;flex-direction:column}
+.sw{flex:1}
+</style>
+</head>
+<body>
+<div class="main">
+  <img src="assets/neos-logo.png" style="height:56px;opacity:.95" alt="WellSky" onerror="this.style.display='none';document.querySelector('.brand').style.display='block'" />
+  <div class="brand" style="display:none">WellSky<br>Eligibility &amp; Auth</div>
+</div>
+<div class="swatches">
+  <div class="sw" style="background:rgb(240,245,255)"></div>
+  <div class="sw" style="background:rgb(22,119,255)"></div>
+  <div class="sw" style="background:rgb(39,105,102)"></div>
+  <div class="sw" style="background:rgb(28,45,66)"></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eligibility Alerts — Showcase</title>
+<style>body{margin:0;background:#fff;font-family:Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="eligibility-detail.jsx"></script>
+<script type="text/babel">
+const blank = "—";
+const ALERTS = [
+  { title:"On service with another home health/hospice", body:"Beneficiary appears currently on service with another Home Health or Hospice agency.",
+    detail:{ intro:"Beneficiary appears currently **on service with another Home Health or Hospice agency**. Verify discharge/transfer status before admitting or billing.",
+      sections:[{ heading:"Details", items:[`Service type: ${blank}`,`Time period: ${blank}`,`Date: ${blank}`,`Provider ID: ${blank}`,`Message: ${blank}`] }] } },
+  { title:"Medicare Secondary", body:"Medicare identified as secondary payer — verify primary insurance before billing.",
+    detail:{ sections:[{ heading:"Details", items:[`Payor type: ${blank}`,`Payor name: ${blank}`,`Address: ${blank}`,`Policy number: ${blank}`,`Phone number: ${blank}`,`Adjustor's name and phone number: ${blank}`,`Date of accident/Injury (DOA/DOI): ${blank}`,`Claim number: ${blank}`,`Message: ${blank}`] }] } },
+  { title:"Medicare Replacement", body:"Patient is covered under a Medicare Advantage plan instead of Original Medicare.",
+    detail:{ sections:[{ heading:"Details", items:[`Service type: ${blank}`,`Payor type: ${blank}`,`Effective Date: ${blank}`,`Address: ${blank}`,`Policy number: ${blank}`,`Phone number: ${blank}`,`Message: ${blank}`] }] } },
+  { title:"Medicare A or B Inactive", body:"One of the patient's Medicare coverages (Part A or B) is inactive.",
+    detail:{ sections:[{ heading:"Details", items:[`Service Type: ${blank}`,`Date: ${blank}`] }] } },
+  { title:"Eligibility check has identified a change for the MBI", body:"The patient's Medicare Beneficiary Identifier (MBI) has changed.",
+    detail:{ sections:[{ heading:"Details", items:[`New MBI: ${blank}`,`Existing MBI: ${blank}`] }] } },
+  { title:"Invalid/Missing Subscriber/Insured ID", body:"The submitted Subscriber/Insured ID is invalid or missing.",
+    detail:{ sections:[{ heading:"Details", items:[`Subscriber ID: ${blank}`] }] } },
+  { title:"Invalid/Missing Subscriber/Insured Name", body:"The submitted Subscriber/Insured Name is invalid or missing.",
+    detail:{ sections:[{ heading:"Details", items:[`Subscriber name: ${blank}`] }] } },
+  { title:"Client Demographics", body:"Mismatched demographic fields were found for this patient (DOB, Gender, or Address).",
+    detail:{ sections:[{ heading:"Details", items:[`Subscriber name: ${blank}`,`Subscriber DOB: ${blank}`,`Subscriber address: ${blank}`] }] } },
+  { title:"Invalid/Missing Provider Identification", body:"The submitted Provider Identification is invalid or missing.",
+    detail:{ sections:[{ heading:"Details", items:[`Provider ID: ${blank}`] }] } },
+  { title:"Provider Not on File", body:"The billing provider could not be found on file with the payer.",
+    detail:{ sections:[{ heading:"Details", items:[`Provider ID: ${blank}`] }] } },
+  { title:"Future Eligibility Date", body:"Coverage becomes effective on a future date.",
+    detail:{ sections:[{ heading:"Details", items:[`Eligible date: ${blank}`] }] } },
+  { title:"Subscriber/Insured Not Found", body:"No matching Subscriber/Insured record was found with the payer.",
+    detail:{ sections:[{ heading:"Details", items:[`Subscriber name: ${blank}`,`Subscriber ID: ${blank}`,`Subscriber DOB: ${blank}`] }] } },
+  { title:"Patient Birth Date Does Not Match That for the Patient on the Database", body:"Submitted date of birth does not match the payer's records.",
+    detail:{ sections:[{ heading:"Details", items:[`Submitted patient DOB: ${blank}`] }] } },
+  { title:"Invalid Participant Identification", body:"The submitted entity identifier is invalid.",
+    detail:{ sections:[{ heading:"Details", items:[`Participant ID: ${blank}`] }] } },
+  { title:"Unable to Respond at Current Time", body:"The payer's eligibility system was temporarily unable to respond.",
+    detail:{ sections:[{ heading:"Details", items:[`No data available to display`] }] } },
+  { title:"Unable to respond/ other error", body:"The eligibility check returned another error and could not respond.",
+    detail:{ sections:[{ heading:"Details", items:[`No data available to display`] }] } },
+];
+function Page() {
+  return (
+    <div style={{minHeight:"100vh",background:"#fff",padding:"40px clamp(16px,4vw,64px)"}}>
+      <window.V2EligibilityAlerts alerts={ALERTS} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Page />);
+</script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+{
+  "id": "872172138",
+  "time": "2026-02-27T12:56:36Z",
+  "type": "es.entity.eligibility-request.ELIGIBILITY_RESPONSE_RECEIVED",
+  "source": "es/eligibility-request/106305",
+  "specversion": "1.0",
+  "datacontenttype": "application/json",
+  "data": {
+    "entityId": "01891ad6-7b3c-7e4a-8f12-9d4e6c8a2b35",
+    "entityStatus": "COMPLETED",
+    "eligibilityRequest": {
+      "senderDetails": {
+        "partnerName": "Element5",
+        "organizationName": "Element5 Health, Inc.",
+        "agencyName": "MID DELTA HOME HEALTH, INC",
+        "branchName": "Branch 004 — Boston Metro"
+      },
+      "patientDetails": {
+        "firstName": "LESLIE",
+        "middleName": "W",
+        "lastName": "ALEXANDER",
+        "patientId": "106305",
+        "dateOfBirth": "1959-03-10",
+        "gender": "M",
+        "startOfCareDate": "2025-09-06",
+        "patientAddress": {
+          "addressLine1": "P O BX 1000",
+          "addressLine2": null,
+          "city": "CITY",
+          "state": "MS",
+          "zip": "391541090"
+        }
+      },
+      "payerDetails": {
+        "payerName": "Medicare - All states",
+        "payerId": "10000",
+        "payerHierarchy": "P",
+        "memberId": "7K43W1TEST"
+      },
+      "serviceTypesRequested": [
+        {
+          "serviceTypeCode": "30",
+          "serviceTypeDescription": "Health Benefit Plan Coverage"
+        },
+        {
+          "serviceTypeCode": "42",
+          "serviceTypeDescription": "Home Health Care"
+        }
+      ]
+    },
+    "eligibilityResponse": {
+      "patientDetails": {
+        "patientId": "106305",
+        "firstName": "LESLIE",
+        "lastName": "ALEXANDER",
+        "middleName": "W",
+        "dateOfBirth": "1959-03-10",
+        "gender": "M",
+        "patientAddress": {
+          "addressLine1": "P O BX 1000",
+          "addressLine2": null,
+          "city": "CITY",
+          "state": "MS",
+          "zip": "391541090"
+        },
+        "relationshipToSubscriber": "Subscriber"
+      },
+      "subscriberDetails": {
+        "firstName": "LESLIE",
+        "lastName": "ALEXANDER",
+        "middleName": "W",
+        "dateOfBirth": "1959-03-10",
+        "gender": "M",
+        "subscriberAddress": {
+          "addressLine1": "P O BX 1000",
+          "addressLine2": null,
+          "city": "CITY",
+          "state": "MS",
+          "zip": "391541090"
+        }
+      },
+      "payerDetails": {
+        "payerName": "Medicare - All states",
+        "planName": "Medicare",
+        "payerType": "Medicare",
+        "payerId": "10000",
+        "memberId": "7K43W1TEST",
+        "MBI": "7K43W1TEST",
+        "eligibilitySource": "IVANS-CMS-RT",
+        "gateway": "IVANS"
+      },
+      "planDetails": {
+        "planSponsor": "CMS",
+        "planType": "Medicare Traditional"
+      },
+      "planCoverage": {
+        "eligibilityCheckDate": "2026-02-27",
+        "eligibilityInquiryId": "872172137",
+        "coverageStatus": "Active",
+        "coverageDescription": "Beneficiary insured due to age OASI",
+        "policyStartDate": "2004-03-01",
+        "policyEndDate": "9999-12-31",
+        "serviceCareProviderNetworkStatus": "General"
+      },
+      "planBenefits": [
+        {
+          "network": "General",
+          "coverageLevel": "Individual",
+          "benefitStartDate": "2026-01-01",
+          "benefitEndDate": "2026-12-31",
+          "deductible": [
+            {
+              "value": "1736.00",
+              "deductibleType": "Episode",
+              "timePeriod": "Episode",
+              "insurancePart": "Medicare Part A"
+            }
+          ],
+          "copay": [
+            {
+              "copayType": "Episode",
+              "amount": "0.00",
+              "timePeriod": "Episode",
+              "insurancePart": "Medicare Part A",
+              "episodeCount": 1
+            }
+          ]
+        },
+        {
+          "network": "General",
+          "coverageLevel": "Individual",
+          "benefitStartDate": "2025-01-01",
+          "benefitEndDate": "2025-12-31",
+          "deductible": [
+            {
+              "value": "1676.00",
+              "deductibleType": "Episode",
+              "timePeriod": "Episode",
+              "insurancePart": "Medicare Part A"
+            }
+          ],
+          "copay": [
+            {
+              "copayType": "Episode",
+              "amount": "0.00",
+              "timePeriod": "Episode",
+              "insurancePart": "Medicare Part A",
+              "episodeCount": 1
+            }
+          ]
+        },
+        {
+          "network": "General",
+          "coverageLevel": "Individual",
+          "benefitStartDate": "2026-01-01",
+          "benefitEndDate": "2026-12-31",
+          "deductible": [
+            {
+              "value": "283.00",
+              "deductibleType": "CalendarYear",
+              "timePeriod": "CalendarYear",
+              "insurancePart": "Medicare Part B"
+            }
+          ],
+          "copay": [
+            {
+              "copayType": "Day",
+              "amount": "0.00",
+              "timePeriod": "CalendarYear",
+              "insurancePart": "Medicare Part B",
+              "episodeCount": null
+            }
+          ]
+        },
+        {
+          "network": "General",
+          "coverageLevel": "Individual",
+          "benefitStartDate": "2025-01-01",
+          "benefitEndDate": "2025-12-31",
+          "deductible": [
+            {
+              "value": "257.00",
+              "deductibleType": "CalendarYear",
+              "timePeriod": "CalendarYear",
+              "insurancePart": "Medicare Part B"
+            }
+          ],
+          "copay": [
+            {
+              "copayType": "Day",
+              "amount": "0.00",
+              "timePeriod": "CalendarYear",
+              "insurancePart": "Medicare Part B",
+              "episodeCount": null
+            }
+          ]
+        }
+      ],
+      "serviceLevelDetails": [
+        {
+          "serviceTypeCode": "42",
+          "serviceTypeDescription": "Home Health Care",
+          "coverageStatus": "Active Policy",
+          "coverageDescription": "Active Part A/B Home Health Benefit",
+          "benefitStartDate": "2026-01-01",
+          "benefitEndDate": "2026-12-31",
+          "serviceLevelBenefits": [
+            {
+              "network": "General",
+              "coverageLevel": "Individual",
+              "benefitStartDate": "2026-01-01",
+              "benefitEndDate": "2026-12-31",
+              "deductible": [
+                {
+                  "value": "0.00",
+                  "deductibleType": "Episode",
+                  "timePeriod": "Episode",
+                  "insurancePart": "Medicare Part A"
+                }
+              ],
+              "copay": [
+                {
+                  "copayType": "Episode",
+                  "amount": "0.00",
+                  "timePeriod": "Episode",
+                  "insurancePart": "Medicare Part A",
+                  "episodeCount": 1,
+                  "quantityRemaining": null,
+                  "quantityExceeded": null,
+                  "quantityNotExceeded": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "additionalCoverageDetails": [
+        {
+          "planName": "SilverScript Choice",
+          "payerId": "11004",
+          "coverageStartDate": "2015-01-01",
+          "coverageEndDate": "9999-12-31",
+          "memberId": "S5601"
+        },
+        {
+          "planName": "STATE FARM INSURANCE CO.",
+          "payerId": "N/A",
+          "coverageStartDate": "2023-08-17",
+          "coverageEndDate": "9999-12-31",
+          "memberId": "055814224F"
+        }
+      ],
+      "contractedServiceProvider": {
+        "contractedServiceProviderName": "MID DELTA HOME HEALTH, INC"
+      },
+      "eligibilityAlert": [
+        {
+          "eligibilityAlertType": "Overlapping Care Alert",
+          "alertDescription": "Overlapping Home Health Episode identified with Palmetto GBA (NPI: 1649295684) for period 2026-01-05 to 2026-02-03. Status: Still Patient."
+        },
+        {
+          "eligibilityAlertType": "Historical Care Alert",
+          "alertDescription": "Prior Home Health Episodes identified with Palmetto GBA covering periods 2025-08-11 to 2026-01-04."
+        },
+        {
+          "eligibilityAlertType": "Coordination of Benefits (COB) Alert",
+          "alertDescription": "Non-Group Health Plan Primary MSP found: STATE FARM INSURANCE CO. (Effective 2023-08-17) under reference 055814224F."
+        }
+      ]
+    },
+    "eligibilityResponseDocs": [],
+    "failureReason": null,
+    "meta": {
+      "userType": "automated",
+      "user": "system"
+    }
+  }
+}
